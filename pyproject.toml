@@ -1,0 +1,26 @@
+[project]
+name = "scrapesuite"
+description = "A reusable Python toolkit for web/data collection with offline-first testing"
+requires-python = ">=3.11"
+dependencies = [
+    "requests",
+    "beautifulsoup4",
+    "pandas",
+    "pyarrow",
+    "pyyaml",
+    "typer",
+    "questionary",
+    "pydantic",
+    "rich",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.format]
+quote-style = "preserve"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "PL", "RUF"]
+ignore = []
+

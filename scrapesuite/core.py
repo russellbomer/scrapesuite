@@ -1,0 +1,166 @@
+"""Core job loading and execution logic."""
+
+import warnings
+from typing import Any
+
+import pandas as pd
+import yaml
+
+from scrapesuite.connectors import custom as custom_conn
+from scrapesuite.connectors import fda, nws
+from scrapesuite.connectors.base import Connector
+from scrapesuite.policy import is_allowed_domain
+from scrapesuite.sinks.base import Sink
+from scrapesuite.sinks.csv import CSVSink
+from scrapesuite.sinks.parquet import ParquetSink
+from scrapesuite.state import load_cursor, save_cursor, upsert_items
+from scrapesuite.transforms import custom as custom_tx
+from scrapesuite.transforms import fda as fda_transforms
+from scrapesuite.transforms import nws as nws_transforms
+
+_CONNECTOR_REGISTRY: dict[str, type[Connector]] = {
+    "custom_list": custom_conn.CustomConnector,
+    "fda_list": fda.FDAConnector,
+    "nws_list": nws.NWSConnector,
+}
+
+_TRANSFORM_REGISTRY: dict[str, Any] = {
+    "custom": custom_tx.normalize,
+    "fda_recalls": fda_transforms.normalize,
+    "nws_alerts": nws_transforms.normalize,
+}
+
+
+def load_yaml(path: str) -> dict[str, Any]:
+    """Load and validate minimal YAML job spec schema."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+    except FileNotFoundError as err:
+        raise FileNotFoundError(f"Job file not found: {path}") from err
+    except yaml.YAMLError as err:
+        raise ValueError(f"Invalid YAML in {path}: {err}") from err
+
+    if not isinstance(data, dict):
+        raise ValueError(f"Job spec must be a dictionary: {path}")
+
+    required_keys = ["version", "job", "source", "transform", "sink"]
+    for key in required_keys:
+        if key not in data:
+            raise ValueError(f"Missing required key '{key}' in job spec: {path}")
+
+    if not isinstance(data["source"], dict) or "parser" not in data["source"]:
+        raise ValueError(f"Invalid source.parser in job spec: {path}")
+
+    if data["source"]["parser"] not in _CONNECTOR_REGISTRY:
+        available = ", ".join(_CONNECTOR_REGISTRY.keys())
+        raise ValueError(
+            f"Unknown parser '{data['source']['parser']}' in {path}. Available: {available}"
+        )
+
+    return data
+
+
+def run_job(
+    job_dict: dict[str, Any],
+    *,
+    max_items: int = 200,
+    offline: bool = True,
+    db_path: str | None = None,
+    timezone: str = "America/New_York",
+) -> tuple[pd.DataFrame, str | None]:
+    """
+    Execute a job: collect, transform, dedupe, write.
+
+    Returns:
+        (dataframe, next_cursor)
+    """
+    job_name = job_dict["job"]
+    source = job_dict["source"]
+    transform = job_dict["transform"]
+    sink_spec = job_dict["sink"]
+    policy = job_dict.get("policy", {})
+
+    # Load cursor from state
+    cursor = load_cursor(job_name, db_path=db_path)
+
+    # Resolve connector with Option B pattern (entry_url, allowlist, rate_limit_rps)
+    parser_name = source["parser"]
+    connector_class = _CONNECTOR_REGISTRY[parser_name]
+    entry_url = source.get("entry", "")
+    allowlist = policy.get("allowlist", [])
+    rate_limit_rps = source.get("rate_limit_rps", 1.0)
+
+    # Enforce allowlist for live mode
+    if not offline:
+        if allowlist and not is_allowed_domain(entry_url, allowlist):
+            raise ValueError(
+                f"Domain not in allowlist for live mode: {entry_url}. Allowlist: {allowlist}"
+            )
+
+    # Instantiate connector with config from YAML
+    connector = connector_class(
+        entry_url=entry_url,
+        allowlist=allowlist,
+        rate_limit_rps=rate_limit_rps,
+    )
+
+    # Collect records
+    detail_parser_name = source.get("detail_parser")
+    records, next_cursor = connector.collect(
+        cursor=cursor,
+        max_items=max_items,
+        offline=offline,
+    )
+
+    # Apply detail parser if specified (live mode only, or offline with fixture)
+    if detail_parser_name and records:
+        if hasattr(connector, "enrich_with_detail"):
+            try:
+                records = connector.enrich_with_detail(records, detail_parser_name, offline=offline)
+            except FileNotFoundError:
+                # Option C: skip if fixture missing in offline mode
+                if offline:
+                    warnings.warn(
+                        f"Detail parser '{detail_parser_name}' specified but "
+                        f"fixture not found. Continuing without detail data.",
+                        stacklevel=2,
+                    )
+
+    # Apply transform pipeline
+    df = pd.DataFrame(records)
+    if df.empty:
+        return df, cursor
+
+    pipeline = transform.get("pipeline", [])
+    for step in pipeline:
+        if "normalize" in step:
+            normalize_func = _TRANSFORM_REGISTRY.get(step["normalize"])
+            if not normalize_func:
+                available = ", ".join(_TRANSFORM_REGISTRY.keys())
+                raise ValueError(
+                    f"Unknown normalize function '{step['normalize']}'. Available: {available}"
+                )
+            df = normalize_func(records)
+
+    # Upsert to state (idempotent deduplication)
+    upsert_items(job_name, records, db_path=db_path)
+
+    # Save cursor
+    if next_cursor:
+        save_cursor(job_name, next_cursor, db_path=db_path)
+
+    # Write sink
+    sink_kind = sink_spec.get("kind", "parquet")
+    sink_path_template = sink_spec.get("path", "data/cache/{job}/%Y%m%dT%H%M%SZ.parquet")
+    if sink_kind == "parquet":
+        sink: Sink = ParquetSink(sink_path_template, timezone=timezone)
+    elif sink_kind == "csv":
+        sink = CSVSink(sink_path_template, timezone=timezone)
+    else:
+        available = "parquet, csv"
+        raise ValueError(f"Unknown sink kind '{sink_kind}'. Available: {available}")
+
+    sink.write(df, job=job_name)
+
+    return df, next_cursor
