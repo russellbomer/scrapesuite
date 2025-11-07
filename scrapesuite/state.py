@@ -2,7 +2,7 @@
 
 import json
 import sqlite3
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -55,7 +55,7 @@ def load_cursor(job: str, db_path: str | None = None) -> str | None:
 def save_cursor(job: str, cursor: str | None, db_path: str | None = None) -> None:
     """Save or update the cursor for a job."""
     conn = open_db(db_path)
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     conn.execute(
         """
         INSERT INTO jobs_state (job, last_cursor, last_run)
@@ -78,7 +78,7 @@ def upsert_items(job: str, records: list[dict[str, Any]], db_path: str | None = 
         Count of newly inserted rows (0 if all were updates).
     """
     conn = open_db(db_path)
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
     new_count = 0
 
     for record in records:
