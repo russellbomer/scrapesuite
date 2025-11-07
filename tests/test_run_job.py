@@ -161,7 +161,7 @@ def test_custom_connector_live_raises() -> None:
 
 def test_run_all_ignores_examples() -> None:
     """Test that run-all only globs jobs/*.yml, not examples/."""
-    jobs_dir = Path("jobs")
+    _jobs_dir = Path("jobs")
     examples_dir = Path("examples/jobs")
 
     # Verify glob pattern is non-recursive
