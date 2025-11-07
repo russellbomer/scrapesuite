@@ -5,7 +5,9 @@ import time
 
 import requests
 
-_THROTTLE_LAST_TIME: float | None = None
+# Store throttle state in a mutable container to avoid using the `global` statement.
+# This keeps behavior identical but avoids module-level `global` usage flagged by ruff.
+_THROTTLE = {"last_time": None}
 _RPS = 1.0
 
 
@@ -21,14 +23,12 @@ def get_html(
 
     Not used in offline mode or tests.
     """
-    global _THROTTLE_LAST_TIME
-
     headers = {"User-Agent": ua}
 
     for attempt in range(max_retries):
         # Rate limiting: 1 RPS with jitter
-        if _THROTTLE_LAST_TIME is not None:
-            elapsed = time.time() - _THROTTLE_LAST_TIME
+        if _THROTTLE["last_time"] is not None:
+            elapsed = time.time() - _THROTTLE["last_time"]
             min_interval = 1.0 / _RPS
             if elapsed < min_interval:
                 sleep_time = min_interval - elapsed + random.uniform(0, 0.1)
@@ -37,7 +37,7 @@ def get_html(
         try:
             response = requests.get(url, headers=headers, timeout=timeout)
             response.raise_for_status()
-            _THROTTLE_LAST_TIME = time.time()
+            _THROTTLE["last_time"] = time.time()
             return response.text
         except requests.RequestException:
             if attempt == max_retries - 1:
