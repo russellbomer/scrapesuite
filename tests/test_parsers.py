@@ -1,8 +1,8 @@
 """Tests for connector parsers."""
 
-import scrapesuite.connectors.custom as custom_mod
-
 import pytest
+
+import scrapesuite.connectors.custom as custom_mod
 
 from scrapesuite.connectors import custom, fda, nws
 
