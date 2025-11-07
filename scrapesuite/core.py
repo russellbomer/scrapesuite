@@ -31,6 +31,70 @@ _TRANSFORM_REGISTRY: dict[str, Any] = {
 }
 
 
+def _resolve_connector(source: dict[str, Any], policy: dict[str, Any], offline: bool):
+    """Resolve and instantiate connector from source spec.
+
+    Separated out to reduce complexity in run_job.
+    """
+    parser_name = source["parser"]
+    connector_class = _CONNECTOR_REGISTRY[parser_name]
+    entry_url = source.get("entry", "")
+    allowlist = policy.get("allowlist", [])
+    rate_limit_rps = source.get("rate_limit_rps", 1.0)
+
+    # Enforce allowlist for live mode
+    if not offline:
+        if allowlist and not is_allowed_domain(entry_url, allowlist):
+            raise ValueError(
+                f"Domain not in allowlist for live mode: {entry_url}. Allowlist: {allowlist}"
+            )
+
+    return connector_class(
+        entry_url=entry_url, allowlist=allowlist, rate_limit_rps=rate_limit_rps
+    )
+
+
+def _apply_transform_pipeline(records: list[dict[str, Any]], transform: dict[str, Any]):
+    """Apply transform pipeline to raw records and return a DataFrame.
+
+    Separated to reduce branching in run_job.
+    """
+    df = pd.DataFrame(records)
+    if df.empty:
+        return df
+
+    pipeline = transform.get("pipeline", [])
+    for step in pipeline:
+        if "normalize" in step:
+            normalize_func = _TRANSFORM_REGISTRY.get(step["normalize"])
+            if not normalize_func:
+                available = ", ".join(_TRANSFORM_REGISTRY.keys())
+                raise ValueError(
+                    f"Unknown normalize function '{step['normalize']}'. Available: {available}"
+                )
+            df = normalize_func(records)
+
+    return df
+
+
+def _create_sink(sink_spec: dict[str, Any], timezone: str, job_name: str) -> Sink:
+    """Create configured sink instance from spec.
+
+    Separated to reduce run_job size.
+    """
+    sink_kind = sink_spec.get("kind", "parquet")
+    sink_path_template = sink_spec.get("path", "data/cache/{job}/%Y%m%dT%H%M%SZ.parquet")
+    if sink_kind == "parquet":
+        sink: Sink = ParquetSink(sink_path_template, timezone=timezone)
+    elif sink_kind == "csv":
+        sink = CSVSink(sink_path_template, timezone=timezone)
+    else:
+        available = "parquet, csv"
+        raise ValueError(f"Unknown sink kind '{sink_kind}'. Available: {available}")
+
+    return sink
+
+
 def load_yaml(path: str) -> dict[str, Any]:
     """Load and validate minimal YAML job spec schema."""
     try:
@@ -84,26 +148,8 @@ def run_job(
     # Load cursor from state
     cursor = load_cursor(job_name, db_path=db_path)
 
-    # Resolve connector with Option B pattern (entry_url, allowlist, rate_limit_rps)
-    parser_name = source["parser"]
-    connector_class = _CONNECTOR_REGISTRY[parser_name]
-    entry_url = source.get("entry", "")
-    allowlist = policy.get("allowlist", [])
-    rate_limit_rps = source.get("rate_limit_rps", 1.0)
-
-    # Enforce allowlist for live mode
-    if not offline:
-        if allowlist and not is_allowed_domain(entry_url, allowlist):
-            raise ValueError(
-                f"Domain not in allowlist for live mode: {entry_url}. Allowlist: {allowlist}"
-            )
-
     # Instantiate connector with config from YAML
-    connector = connector_class(
-        entry_url=entry_url,
-        allowlist=allowlist,
-        rate_limit_rps=rate_limit_rps,
-    )
+    connector = _resolve_connector(source, policy, offline)
 
     # Collect records
     detail_parser_name = source.get("detail_parser")
@@ -128,20 +174,9 @@ def run_job(
                     )
 
     # Apply transform pipeline
-    df = pd.DataFrame(records)
+    df = _apply_transform_pipeline(records, transform)
     if df.empty:
         return df, cursor
-
-    pipeline = transform.get("pipeline", [])
-    for step in pipeline:
-        if "normalize" in step:
-            normalize_func = _TRANSFORM_REGISTRY.get(step["normalize"])
-            if not normalize_func:
-                available = ", ".join(_TRANSFORM_REGISTRY.keys())
-                raise ValueError(
-                    f"Unknown normalize function '{step['normalize']}'. Available: {available}"
-                )
-            df = normalize_func(records)
 
     # Upsert to state (idempotent deduplication)
     upsert_items(job_name, records, db_path=db_path)
@@ -151,16 +186,7 @@ def run_job(
         save_cursor(job_name, next_cursor, db_path=db_path)
 
     # Write sink
-    sink_kind = sink_spec.get("kind", "parquet")
-    sink_path_template = sink_spec.get("path", "data/cache/{job}/%Y%m%dT%H%M%SZ.parquet")
-    if sink_kind == "parquet":
-        sink: Sink = ParquetSink(sink_path_template, timezone=timezone)
-    elif sink_kind == "csv":
-        sink = CSVSink(sink_path_template, timezone=timezone)
-    else:
-        available = "parquet, csv"
-        raise ValueError(f"Unknown sink kind '{sink_kind}'. Available: {available}")
-
+    sink = _create_sink(sink_spec, timezone, job_name)
     sink.write(df, job=job_name)
 
     return df, next_cursor
