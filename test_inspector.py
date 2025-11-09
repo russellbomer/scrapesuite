@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """Test the wizard HTML analysis on Hacker News."""
 
+import sys
+
+# Fix Windows encoding issues
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+
 from scrapesuite.http import get_html
 from scrapesuite.inspector import find_item_selector, inspect_html, preview_extraction
 
@@ -17,7 +24,13 @@ print(f"Total links: {analysis['total_links']}")
 
 print("\n=== Repeated Classes ===")
 for cls_info in analysis['repeated_classes'][:5]:
-    print(f"  .{cls_info['class']} - {cls_info['count']} items - {cls_info['sample_text'][:50]}")
+    sample_text = cls_info['sample_text'][:50]
+    try:
+        print(f"  .{cls_info['class']} - {cls_info['count']} items - {sample_text}")
+    except UnicodeEncodeError:
+        # Fallback to ASCII-safe output
+        sample_text_safe = sample_text.encode('ascii', errors='ignore').decode('ascii')
+        print(f"  .{cls_info['class']} - {cls_info['count']} items - {sample_text_safe}")
 
 print("\n=== Containers ===")
 for container in analysis['containers'][:3]:
@@ -28,8 +41,20 @@ candidates = find_item_selector(html, min_items=3)
 for i, candidate in enumerate(candidates[:5], 1):
     print(f"{i}. {candidate['selector']}")
     print(f"   Count: {candidate['count']}")
-    print(f"   Sample: {candidate.get('sample_title', '')[:60]}")
-    print(f"   URL: {candidate.get('sample_url', '')[:60]}")
+    sample_title = candidate.get('sample_title', '')[:60]
+    sample_url = candidate.get('sample_url', '')[:60]
+    try:
+        if sample_title:
+            print(f"   Sample: {sample_title}")
+        if sample_url:
+            print(f"   URL: {sample_url}")
+    except UnicodeEncodeError:
+        # Fallback to ASCII-safe output
+        if sample_title:
+            sample_title_safe = sample_title.encode('ascii', errors='ignore').decode('ascii')
+            print(f"   Sample: {sample_title_safe}")
+        if sample_url:
+            print(f"   URL: {sample_url}")
     print()
 
 # Test extraction with .athing (HN story rows)
@@ -47,6 +72,14 @@ previews = preview_extraction(html, item_selector, field_selectors)
 
 print(f"\nExtracted {len(previews)} items:")
 for i, item in enumerate(previews, 1):
-    print(f"\n{i}. {item.get('title', '')[:60]}")
-    print(f"   URL: {item.get('url', '')[:60]}")
+    title = item.get('title', '')[:60]
+    url = item.get('url', '')[:60]
+    # Handle encoding issues gracefully
+    try:
+        print(f"\n{i}. {title}")
+        print(f"   URL: {url}")
+    except UnicodeEncodeError:
+        # Fallback to ASCII-safe output
+        print(f"\n{i}. {title.encode('ascii', errors='ignore').decode('ascii')}")
+        print(f"   URL: {url}")
 
