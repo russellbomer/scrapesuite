@@ -2,12 +2,44 @@
 
 Follow these steps to test the interactive wizard from scratch. No prior knowledge needed!
 
+## Platform-Specific Setup
+
+### Virtual Environment Activation
+
+**Linux/Mac/WSL (bash/zsh)**:
+```bash
+source venv/bin/activate
+```
+
+**Windows Git Bash/MINGW64**:
+```bash
+source venv/Scripts/activate
+```
+
+**Windows Command Prompt (cmd.exe)**:
+```cmd
+venv\Scripts\activate.bat
+```
+
+**Windows PowerShell**:
+```powershell
+venv\Scripts\Activate.ps1
+# If you get execution policy error, run first:
+# Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+---
+
 ## Pre-Test Checklist
+
+**These commands work in**: Linux, Mac, Windows Git Bash, Windows WSL
 
 ```bash
 # 1. Verify you're in the right directory
 pwd
-# Should show: /workspaces/scrapesuite
+# Linux/Mac: /path/to/scrapesuite
+# Windows Git Bash: /c/Projects/scrapesuite
+# Windows WSL: /mnt/c/Projects/scrapesuite
 
 # 2. Verify all tests pass
 python -m pytest -q
@@ -519,6 +551,8 @@ After running all tests, you should have:
 
 ## Quick Reference Card
 
+### For Linux/Mac/Git Bash/WSL
+
 ```bash
 # Start wizard
 python -m scrapesuite.wizard
@@ -535,6 +569,21 @@ python -m pytest -q
 # Validate a job config
 cat jobs/JOBNAME.yml
 ```
+
+### For Windows Command Prompt / PowerShell
+
+If `python -c "..."` doesn't work, create a file `test_job.py`:
+
+```python
+# test_job.py
+from scrapesuite.core import load_yaml, run_job
+
+spec = load_yaml('jobs/JOBNAME.yml')
+df, _ = run_job(spec, max_items=5, offline=False)
+print(df)
+```
+
+Then run: `python test_job.py`
 
 ---
 
