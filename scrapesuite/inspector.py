@@ -106,14 +106,62 @@ def find_item_selector(html: str, min_items: int = 3) -> list[dict[str, Any]]:
             elements = soup.find_all(class_=cls)
             first = elements[0]
             
-            # Extract sample data
-            title_elem = first.find(["h1", "h2", "h3", "h4", "a"])
+            # Extract sample data - try multiple strategies for better context
             link_elem = first.find("a", href=True)
+            
+            # Get sample text - prioritize meaningful content
+            sample_title = ""
+            
+            # Try to find a good title/heading
+            title_elem = first.find(["h1", "h2", "h3", "h4"])
+            if title_elem and title_elem.get_text(strip=True):
+                sample_title = title_elem.get_text(strip=True)[:80]
+            
+            # Try prominent link text
+            if not sample_title and link_elem:
+                link_text = link_elem.get_text(strip=True)
+                if link_text and len(link_text) > 3:  # Ignore short links like ">"
+                    sample_title = link_text[:80]
+            
+            # Try any substantial text content
+            if not sample_title:
+                all_text = first.get_text(strip=True)
+                # Even short text is useful if that's all there is
+                if all_text:
+                    # For very short text (like "1."), show it directly
+                    if len(all_text) <= 10:
+                        sample_title = f"Text: '{all_text}'"
+                    else:
+                        sample_title = all_text[:80]
+            
+            # Build descriptive summary if no meaningful text found
+            if not sample_title:
+                parts = []
+                
+                # Describe element type
+                parts.append(f"<{first.name}>")
+                
+                # Show what types of child elements exist
+                child_tags = [child.name for child in first.find_all(recursive=False)]
+                if child_tags:
+                    unique_tags = sorted(set(child_tags))[:3]
+                    parts.append(f"contains {', '.join(unique_tags)}")
+                
+                # Show if it has links
+                link_count = len(first.find_all("a"))
+                if link_count > 0:
+                    parts.append(f"{link_count} link{'s' if link_count != 1 else ''}")
+                
+                # Show if it has specific attributes that might identify it
+                if first.get("id"):
+                    parts.append(f"id='{first.get('id')}'")
+                
+                sample_title = " | ".join(parts) if len(parts) > 1 else parts[0] if parts else "container"
             
             candidates.append({
                 "selector": f".{cls}",
                 "count": count,
-                "sample_title": title_elem.get_text(strip=True)[:80] if title_elem else "",
+                "sample_title": sample_title,
                 "sample_url": link_elem.get("href") if link_elem else "",
                 "confidence": "high" if count >= 10 else "medium",
             })
@@ -128,11 +176,15 @@ def find_item_selector(html: str, min_items: int = 3) -> list[dict[str, Any]]:
     
     for pattern, count in tag_class_patterns.items():
         if count >= min_items:
-            candidates.append({
-                "selector": pattern.replace(".", "."),
-                "count": count,
-                "confidence": "medium",
-            })
+            # Add only if not already covered by class-only selector
+            selector_class = pattern.split(".")[-1]
+            if not any(c["selector"] == f".{selector_class}" for c in candidates):
+                candidates.append({
+                    "selector": pattern.replace(".", "."),
+                    "count": count,
+                    "sample_title": f"<{pattern.split('.')[0]}> element",
+                    "confidence": "medium",
+                })
     
     # Sort by count and confidence
     return sorted(candidates, key=lambda x: x["count"], reverse=True)[:5]
