@@ -202,7 +202,7 @@ def generate_field_selector(item_element: Tag, field_type: str) -> str | None:  
         CSS selector string or None if not found
     """
     if field_type == "title":
-        # Look for headings or prominent links WITH TEXT
+        # Look for headings first (most semantic)
         for tag in ["h1", "h2", "h3", "h4"]:
             elem = item_element.find(tag)
             if elem and elem.get_text(strip=True):
@@ -211,61 +211,180 @@ def generate_field_selector(item_element: Tag, field_type: str) -> str | None:  
                     return f"{tag}.{classes[0]}"
                 return tag
         
-        # Look for link with substantial text (not buttons/icons)
-        for a in item_element.find_all("a", href=True):
-            text = a.get_text(strip=True)
-            if text and len(text) > 3:  # Ignore empty or very short links
-                classes = a.get("class", [])
-                if classes:
-                    return f"a.{classes[0]}"
-                # If no class, use parent context to make it more specific
-                parent = a.parent
-                if parent and parent.get("class"):
-                    parent_class = parent.get("class")[0]
-                    return f".{parent_class} a"
-                return "a"
-    
-    elif field_type == "url":
-        # Find first anchor with href AND text content
+        # Score all links and pick the best candidate
+        link_candidates = []
         for a in item_element.find_all("a", href=True):
             text = a.get_text(strip=True)
             href = a.get("href", "")
-            # Skip vote links, empty links, and anchors
-            if text and len(text) > 3 and not href.startswith("#"):
-                classes = a.get("class", [])
-                if classes:
-                    return f"a.{classes[0]}::attr(href)"
-                # Use parent context for specificity
-                parent = a.parent
-                if parent and parent.get("class"):
-                    parent_class = parent.get("class")[0]
-                    return f".{parent_class} a::attr(href)"
-                return "a::attr(href)"
+            
+            # Skip obvious non-content links
+            if not text or href.startswith("#") or href.startswith("javascript:"):
+                continue
+            
+            score = 0
+            
+            # Prefer longer text (likely article titles, not "Read more")
+            score += min(len(text), 100)  # Cap at 100 to avoid huge bias
+            
+            # Penalize very short text unless it's emoji/unicode
+            if len(text) <= 3 and text.isascii():
+                score -= 50
+            
+            # Boost for semantic attributes
+            if a.get("rel") and "bookmark" in str(a.get("rel")):
+                score += 20
+            if a.get("itemprop") and "name" in str(a.get("itemprop")):
+                score += 20
+            
+            # Penalize common navigation/UI patterns
+            classes = " ".join(a.get("class", [])).lower()
+            if any(word in classes for word in ["vote", "upvote", "reply", "share", "flag", "hide"]):
+                score -= 30
+            if any(word in text.lower() for word in ["vote", "reply", "share", "hide", "save", "report"]):
+                score -= 30
+            
+            link_candidates.append((score, a))
+        
+        # Pick highest scoring link
+        if link_candidates:
+            link_candidates.sort(reverse=True, key=lambda x: x[0])
+            best_link = link_candidates[0][1]
+            
+            classes = best_link.get("class", [])
+            if classes:
+                return f"a.{classes[0]}"
+            # Use parent context for specificity
+            parent = best_link.parent
+            if parent and parent.get("class"):
+                parent_class = parent.get("class")[0]
+                return f".{parent_class} a"
+            return "a"
+    
+    elif field_type == "url":
+        # Reuse title logic but append ::attr(href)
+        title_selector = generate_field_selector(item_element, "title")
+        if title_selector:
+            return f"{title_selector}::attr(href)"
     
     elif field_type == "date":
-        # Look for time element or common date classes
+        # Look for time element or common date patterns
         time_elem = item_element.find("time")
         if time_elem:
+            classes = time_elem.get("class", [])
+            if classes:
+                return f"time.{classes[0]}"
             return "time"
         
-        for keyword in ["date", "timestamp", "time", "posted", "published"]:
-            elem = item_element.find(class_=lambda x, kw=keyword: x and kw in x.lower())
-            if elem:
-                return f".{elem.get('class')[0]}"
+        # Try semantic attributes
+        datetime_elem = item_element.find(attrs={"datetime": True})
+        if datetime_elem:
+            classes = datetime_elem.get("class", [])
+            if classes:
+                return f".{classes[0]}"
+        
+        # Score elements by date-related signals (works across languages)
+        candidates = []
+        for elem in item_element.find_all(["span", "div", "p", "small"]):
+            score = 0
+            text = elem.get_text(strip=True)
+            classes = " ".join(elem.get("class", [])).lower()
+            
+            # Keyword matching (English and common patterns)
+            if any(kw in classes for kw in ["date", "time", "timestamp", "posted", "published", "ago", "when"]):
+                score += 30
+            
+            # Text pattern matching (language-agnostic)
+            import re
+            # ISO dates, timestamps, "X ago" patterns
+            if re.search(r'\d{4}-\d{2}-\d{2}', text):  # ISO date
+                score += 20
+            if re.search(r'\d+\s*(second|minute|hour|day|week|month|year|ago|h|m|d)', text, re.I):
+                score += 15
+            if re.search(r'\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}', text):  # Date formats
+                score += 15
+            
+            if score > 0:
+                candidates.append((score, elem))
+        
+        if candidates:
+            candidates.sort(reverse=True, key=lambda x: x[0])
+            best_elem = candidates[0][1]
+            classes = best_elem.get("class", [])
+            if classes:
+                return f".{classes[0]}"
+            return best_elem.name
     
     elif field_type == "author":
-        # Look for author/username classes
-        for keyword in ["author", "user", "username", "by"]:
-            elem = item_element.find(class_=lambda x, kw=keyword: x and kw in x.lower())
-            if elem:
-                return f".{elem.get('class')[0]}"
+        # Try semantic attributes first
+        author_elem = item_element.find(attrs={"itemprop": "author"})
+        if not author_elem:
+            author_elem = item_element.find(attrs={"rel": "author"})
+        if author_elem:
+            classes = author_elem.get("class", [])
+            if classes:
+                return f".{classes[0]}"
+            return author_elem.name
+        
+        # Score elements by author-related signals
+        candidates = []
+        for elem in item_element.find_all(["span", "a", "div", "p", "small"]):
+            score = 0
+            classes = " ".join(elem.get("class", [])).lower()
+            text = elem.get_text(strip=True)
+            
+            # Keyword matching (expand for multilingual)
+            if any(kw in classes for kw in ["author", "user", "username", "by", "posted-by", "submitter", "creator"]):
+                score += 30
+            
+            # Text patterns that suggest authorship
+            if text.startswith("by ") or text.startswith("@"):
+                score += 15
+            
+            # Penalize very long text (unlikely to be just a username)
+            if len(text) > 50:
+                score -= 10
+            
+            if score > 0:
+                candidates.append((score, elem))
+        
+        if candidates:
+            candidates.sort(reverse=True, key=lambda x: x[0])
+            best_elem = candidates[0][1]
+            classes = best_elem.get("class", [])
+            if classes:
+                return f".{classes[0]}"
+            return best_elem.name
     
     elif field_type == "score":
-        # Look for score/points/votes classes
-        for keyword in ["score", "points", "votes", "upvotes", "rating"]:
-            elem = item_element.find(class_=lambda x, kw=keyword: x and kw in x.lower())
-            if elem:
-                return f".{elem.get('class')[0]}"
+        # Score elements by voting/scoring signals
+        candidates = []
+        for elem in item_element.find_all(["span", "div", "p", "small"]):
+            score = 0
+            text = elem.get_text(strip=True)
+            classes = " ".join(elem.get("class", [])).lower()
+            
+            # Keyword matching
+            if any(kw in classes for kw in ["score", "points", "votes", "upvotes", "rating", "karma", "likes"]):
+                score += 30
+            
+            # Text patterns (numbers followed by "points", etc.)
+            import re
+            if re.search(r'\d+\s*(point|vote|upvote|like|star)', text, re.I):
+                score += 20
+            # Just a number (might be score)
+            if re.match(r'^\d+$', text):
+                score += 5
+            
+            if score > 0:
+                candidates.append((score, elem))
+        
+        if candidates:
+            candidates.sort(reverse=True, key=lambda x: x[0])
+            best_elem = candidates[0][1]
+            classes = best_elem.get("class", [])
+            if classes:
+                return f".{classes[0]}"
+            return best_elem.name
     
     elif field_type == "image":
         # Find first img tag

@@ -1,0 +1,8 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "ruff:format", "type": "shell", "command": "python -m ruff format ." },
+    { "label": "ruff:check",  "type": "shell", "command": "python -m ruff check ." },
+    { "label": "pytest",      "type": "shell", "command": "python -m pytest -q"   }
+  ]
+}
