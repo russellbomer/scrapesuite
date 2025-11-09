@@ -178,6 +178,35 @@ def find_item_selector(html: str, min_items: int = 3) -> list[dict[str, Any]]:
                 
                 sample_title = " | ".join(parts) if len(parts) > 1 else parts[0] if parts else "container"
             
+            # NEW: Check if we should show multiple samples for clarity
+            # If we have 2-5 items, show them all; if more, show first 3
+            sample_texts = []
+            num_samples = min(3, count)
+            for elem in elements[:num_samples]:
+                elem_text = ""
+                # Try heading first
+                heading = elem.find(["h1", "h2", "h3", "h4"])
+                if heading:
+                    elem_text = heading.get_text(strip=True)[:50]
+                # Try link
+                if not elem_text:
+                    elem_link = elem.find("a", href=True)
+                    if elem_link:
+                        elem_text = elem_link.get_text(strip=True)[:50]
+                # Try any text
+                if not elem_text:
+                    elem_text = elem.get_text(strip=True)[:50]
+                
+                if elem_text:
+                    sample_texts.append(elem_text)
+            
+            # If all samples are identical, just show one
+            unique_samples = list(dict.fromkeys(sample_texts))  # Preserve order
+            if len(unique_samples) > 1:
+                sample_title = " | ".join(unique_samples)
+            elif unique_samples:
+                sample_title = unique_samples[0]
+            
             candidates.append({
                 "selector": f".{cls}",
                 "count": count,
@@ -480,12 +509,50 @@ def find_item_selector(html: str, min_items: int = 3) -> list[dict[str, Any]]:
                     "confidence": "medium",
                 })
     
+    # Deduplicate candidates with same selector
+    seen_selectors = set()
+    unique_candidates = []
+    for candidate in candidates:
+        if candidate["selector"] not in seen_selectors:
+            seen_selectors.add(candidate["selector"])
+            unique_candidates.append(candidate)
+    
     # Sort by confidence first (high > medium > low), then by count
     def sort_key(candidate):
         confidence_score = {"high": 3, "medium": 2, "low": 1}.get(candidate["confidence"], 0)
-        return (confidence_score, candidate["count"])
+        count = candidate["count"]
+        
+        # Penalize very high counts (likely navigation/chrome elements)
+        if count > 50:
+            count_score = count / 2
+        else:
+            count_score = count
+        
+        # Boost candidates with meaningful sample titles
+        has_meaningful_title = (
+            candidate.get("sample_title") and 
+            not candidate["sample_title"].startswith("Text: '") and
+            not candidate["sample_title"].startswith("<") and
+            len(candidate["sample_title"]) > 10
+        )
+        title_boost = 100 if has_meaningful_title else 0
+        
+        return (confidence_score, title_boost, count_score)
     
-    return sorted(candidates, key=sort_key, reverse=True)[:5]
+    sorted_candidates = sorted(unique_candidates, key=sort_key, reverse=True)
+    
+    # Return top 15 candidates (more options for user)
+    # But filter out obvious non-content elements
+    filtered = []
+    for candidate in sorted_candidates:
+        # Skip if count is suspiciously high and no meaningful title
+        if candidate["count"] > 100 and not candidate.get("sample_url"):
+            continue
+        filtered.append(candidate)
+        if len(filtered) >= 15:
+            break
+    
+    return filtered if filtered else sorted_candidates[:15]
 
 
 def _make_selector_robust(element: Tag, item_element: Tag) -> str:

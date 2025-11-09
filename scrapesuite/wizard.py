@@ -312,31 +312,41 @@ def _analyze_html_and_build_selectors(entry_url: str) -> dict[str, Any] | None: 
                 print("No repeated patterns found. Using simple link extraction.")
             return None
         
-        # Display candidates
+        # Display candidates (show up to 12 for better coverage)
+        max_display = min(12, len(candidates))
+        
         if console:
             table = Table(title="Detected Item Patterns")
-            table.add_column("Option", style="cyan")
-            table.add_column("Selector", style="green")
-            table.add_column("Count", style="yellow")
-            table.add_column("Sample Title", style="white")
+            table.add_column("Option", style="cyan", width=6)
+            table.add_column("Selector", style="green", width=20)
+            table.add_column("Count", style="yellow", width=6)
+            table.add_column("Sample Content", style="white")
             
-            for i, candidate in enumerate(candidates[:5], 1):
+            for i, candidate in enumerate(candidates[:max_display], 1):
+                # Truncate sample title intelligently
+                sample = candidate.get("sample_title", "")
+                if len(sample) > 60:
+                    sample = sample[:57] + "..."
+                
                 table.add_row(
                     str(i),
                     candidate["selector"],
                     str(candidate["count"]),
-                    candidate.get("sample_title", "")[:50],
+                    sample,
                 )
             console.print(table)
         else:
             print("\nDetected Item Patterns:")
-            for i, candidate in enumerate(candidates[:5], 1):
+            for i, candidate in enumerate(candidates[:max_display], 1):
                 print(f"{i}. {candidate['selector']} ({candidate['count']} items)")
                 if candidate.get("sample_title"):
-                    print(f"   Sample: {candidate['sample_title'][:50]}")
+                    sample = candidate['sample_title']
+                    if len(sample) > 70:
+                        sample = sample[:67] + "..."
+                    print(f"   Sample: {sample}")
         
         # Let user select item selector
-        choices = [f"{c['selector']} ({c['count']} items)" for c in candidates[:5]]
+        choices = [f"{c['selector']} ({c['count']} items)" for c in candidates[:max_display]]
         choices.append("Skip (use manual config)")
         
         selection = _prompt_select("Select item pattern", choices, default=choices[0])
