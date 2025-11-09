@@ -245,6 +245,11 @@ def _collect_entry_url(template_defaults: dict[str, Any]) -> str:
 
 def _collect_allowlist(entry: str, template_defaults: dict[str, Any]) -> list[str]:
     """Collect allowlist and ensure entry netloc is included."""
+    if console:
+        console.print("\n[cyan]ℹ Allowlist:[/cyan] Domains the scraper is allowed to visit (prevents following external links)")
+    else:
+        print("\nℹ Allowlist: Domains the scraper is allowed to visit (prevents following external links)")
+    
     entry_netloc = urlparse(entry).netloc
     default_allowlist = list(template_defaults["allowlist"])
     if entry_netloc and entry_netloc not in default_allowlist:
@@ -264,6 +269,11 @@ def _collect_allowlist(entry: str, template_defaults: dict[str, Any]) -> list[st
 
 def _collect_rps(template_defaults: dict[str, Any]) -> float:
     """Collect and validate RPS value."""
+    if console:
+        console.print(f"\n[cyan]ℹ Rate limit:[/cyan] Requests per second (0.1-2.0). Lower is more polite. Recommended: 1.0")
+    else:
+        print(f"\nℹ Rate limit: Requests per second (0.1-2.0). Lower is more polite. Recommended: 1.0")
+    
     rps_str = _prompt_text("Rate limit (RPS)", str(template_defaults["rps"]))
     try:
         rps = float(rps_str)
@@ -507,19 +517,37 @@ def run_wizard() -> None:  # noqa: PLR0912, PLR0915
     rps = _collect_rps(template_defaults)
     
     # Cursor field - suggest based on selectors if available
+    if console:
+        console.print("\n[cyan]ℹ Cursor field:[/cyan] Field used to track progress and avoid re-scraping items")
+    else:
+        print("\nℹ Cursor field: Field used to track progress and avoid re-scraping items")
+    
     if selectors and "url" in selectors.get("fields", {}):
         default_cursor = "url"
     else:
         default_cursor = template_defaults["cursor_field"]
-    cursor_field = _prompt_text("Cursor field", default_cursor)
+    cursor_field = _prompt_text("Cursor field (typically 'id' or 'url')", default_cursor)
 
     # Sink
+    if console:
+        console.print("\n[cyan]ℹ Output format:[/cyan] Parquet is faster and smaller, CSV is more portable")
+    else:
+        print("\nℹ Output format: Parquet is faster and smaller, CSV is more portable")
+    
     sink_kind = _prompt_select(
         "Sink kind",
         choices=["parquet", "csv"],
         default=template_defaults["sink_kind"],
     )
-    sink_path = _prompt_text("Sink path template", template_defaults["sink_path"])
+    
+    # Generate appropriate path based on sink kind
+    default_path = template_defaults["sink_path"]
+    if sink_kind == "csv" and default_path.endswith(".parquet"):
+        default_path = default_path.replace(".parquet", ".csv")
+    elif sink_kind == "parquet" and default_path.endswith(".csv"):
+        default_path = default_path.replace(".csv", ".parquet")
+    
+    sink_path = _prompt_text("Sink path template (supports strftime like %Y%m%d)", default_path)
     max_items = _collect_max_items()
 
     # Validate with Pydantic
@@ -556,10 +584,15 @@ def run_wizard() -> None:  # noqa: PLR0912, PLR0915
     else:
         print(f"SUCCESS: {success_msg}")
 
-    # Offer offline smoke test
-    if _prompt_confirm("Run offline smoke test?", default=True):
+    # Offer smoke test
+    # For GenericConnector, we need to run live (no fixtures)
+    is_generic = parser == "generic"
+    test_mode = "live" if is_generic else "offline"
+    
+    if _prompt_confirm(f"Run {test_mode} smoke test?", default=True):
         try:
-            df, next_cursor = run_job(spec, max_items=model.max_items, offline=True)
+            # GenericConnector needs live mode, others use offline with fixtures
+            df, next_cursor = run_job(spec, max_items=model.max_items, offline=not is_generic)
             summary = f"{model.job_name}: {len(df)} rows, next_cursor={next_cursor}"
             if console:
                 console.print(f"[green]✓ {summary}[/green]")
