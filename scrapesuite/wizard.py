@@ -577,6 +577,8 @@ def run_wizard() -> None:  # noqa: PLR0912, PLR0915
     if _prompt_confirm(f"Run {test_mode} smoke test?", default=True):
         try:
             # GenericConnector needs live mode, others use offline with fixtures
+            if console:
+                console.print(f"[dim]Running with offline={not is_generic}...[/dim]")
             df, next_cursor = run_job(spec, max_items=model.max_items, offline=not is_generic)
             summary = f"{model.job_name}: {len(df)} rows, next_cursor={next_cursor}"
             if console:
@@ -587,8 +589,10 @@ def run_wizard() -> None:  # noqa: PLR0912, PLR0915
             error_msg = f"Smoke test failed: {e}"
             if console:
                 console.print(f"[red]{error_msg}[/red]")
+                console.print(f"[dim]Debug: parser={parser}, offline={not is_generic}[/dim]")
             else:
                 print(f"ERROR: {error_msg}")
+                print(f"Debug: parser={parser}, offline={not is_generic}")
 
 
 if __name__ == "__main__":
