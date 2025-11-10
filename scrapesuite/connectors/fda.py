@@ -14,6 +14,9 @@ from scrapesuite.http import get_html
 class FDAConnector:
     """Connector for FDA recalls."""
 
+    # Compile regex once at class level for performance
+    _SLUG_PATTERN = re.compile(r"/recalls-market-withdrawals-safety-alerts/([^/]+)$")
+
     def __init__(
         self,
         entry_url: str | None = None,
@@ -102,9 +105,6 @@ class FDAConnector:
         # Select anchors matching FDA recall path pattern
         anchors = soup.select("a[href*='/safety/recalls-market-withdrawals-safety-alerts/']")
 
-        # Regex to extract slug from path
-        slug_pattern = re.compile(r"/recalls-market-withdrawals-safety-alerts/([^/]+)$")
-
         for anchor in anchors:
             href = anchor.get("href", "")
             if not href:
@@ -114,7 +114,7 @@ class FDAConnector:
             url = urljoin(entry_url, href)
 
             # Extract slug for ID (last path segment)
-            slug_match = slug_pattern.search(href)
+            slug_match = self._SLUG_PATTERN.search(href)
             if slug_match:
                 item_id = slug_match.group(1)
             else:
