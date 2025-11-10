@@ -1,9 +1,0 @@
-{
-  // Roo Code extension profiles path. If your Roo extension uses a different
-  // setting key, update it accordingly. This points the extension at the
-  // generated profiles file in `profiles/build`.
-  "roo.profilesPath": "${workspaceFolder}/profiles/build/profiles.roo.json",
-  // Optionally, build profiles automatically (not all Roo extensions support this).
-  // If your extension supports watching/profiles refresh, enable that key here.
-  // "roo.profilesWatch": true
-}
