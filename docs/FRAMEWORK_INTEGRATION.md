@@ -56,9 +56,29 @@ The system now uses 4 confidence levels:
 
 ## Supported Frameworks
 
-### 13 Framework Profiles
+### 17 Framework Profiles
 
-1. **DrupalViewsProfile** - Government/enterprise sites
+1. **DjangoAdminProfile** - Django Admin interface
+   - Containers: `tbody tr`, `.result`, `.grp-row`, `tr.row1, tr.row2`
+   - Fields: `th.field-__str__ a`, `.field-title a`, `.field-author`, `.field-created`
+   - Detection: `django-admin`, `/admin/`, `grp-`, `suit-`, `djdt`
+
+2. **NextJSProfile** - Next.js applications
+   - Containers: `[class*='card']`, `[class*='item']`, `[class*='post']`, `article`
+   - Fields: `h2 a`, `[class*='title']`, `time`, `[datetime]`, `[class*='author']`
+   - Detection: `__NEXT_DATA__`, `__next`, `data-nextjs`, `/_next/`
+
+3. **ReactComponentProfile** - React applications
+   - Containers: `[class*='Card']`, `[class*='Item']`, `[class*='Post']`, `article`
+   - Fields: `[class*='Title']`, `[class*='Heading']`, `time`, `[class*='Author']`
+   - Detection: `data-reactroot`, `data-react-`, `__REACT`
+
+4. **VueJSProfile** - Vue.js applications
+   - Containers: `[class*='card']`, `[class*='item']`, `article`, `[v-for]`
+   - Fields: `[class*='title']`, `h2`, `time`, `[class*='author']`
+   - Detection: `v-for=`, `v-if=`, `v-bind:`, `:key=`, `@click=`, `__VUE__`
+
+5. **DrupalViewsProfile** - Government/enterprise sites
    - Containers: `.views-row`, `.view-content > div`
    - Fields: `.views-field-title`, `.views-field-field-date`, `.views-field-field-product-description`
    - Detection: `meta[name=Generator][content*=Drupal]`, `.views-row`, `body.not-front`
@@ -78,9 +98,46 @@ The system now uses 4 confidence levels:
    - Fields: `.product-title`, `.product-price`, `.product-vendor`
    - Detection: Shopify scripts, `.shopify-`, `.product-card`
 
-5. **WebflowProfile**, **SquarespaceProfile**, **WixProfile**, **GhostProfile**, **MediumProfile**
+5. **DrupalViewsProfile** - Government/enterprise sites
+   - Containers: `.views-row`, `.view-content > div`
+   - Fields: `.views-field-title`, `.views-field-field-date`, `.views-field-field-product-description`
+   - Detection: `meta[name=Generator][content*=Drupal]`, `.views-row`, `body.not-front`
+
+6. **WordPressProfile** - Most popular CMS
+   - Containers: `.hentry`, `.post`, `article.post`
+   - Fields: `.entry-title`, `.entry-content`, `.posted-on`, `.byline`
+   - Detection: `meta[name=generator][content*=WordPress]`, `.hentry`, `.wp-`
+
+7. **BootstrapProfile** - Component library
+   - Containers: `.card`, `.list-group-item`
+   - Fields: `.card-title`, `.card-text`, `.list-group-item-heading`
+   - Detection: Bootstrap CSS links, `.card`, `.btn`, `.navbar`
+
+8. **ShopifyProfile** - E-commerce
+   - Containers: `.product-card`, `.collection-item`
+   - Fields: `.product-title`, `.product-price`, `.product-vendor`
+   - Detection: Shopify scripts, `.shopify-`, `.product-card`
+
+9. **TailwindProfile** - Utility-first CSS framework
+   - Containers: Semantic HTML with Tailwind classes
+   - Fields: Common Tailwind utility patterns
+   - Detection: Tailwind CDN, common utility class combinations
+
+10. **WebflowProfile**, **SquarespaceProfile**, **WixProfile**, **GhostProfile**, **MediumProfile** (Legacy - may be deprecated)
    - Each with specific container/field patterns
    - Unique detection signatures
+
+11. **JoomlaProfile**, **MagentoProfile** - Alternative CMS/e-commerce (Legacy - may be deprecated)
+   - Joomla: `.item-`, `.category-`, `#joomla-`
+   - Magento: `.product-item`, `.product-item-link`
+
+12. **GenericTableProfile** - Fallback for table structures (Legacy - may be deprecated)
+   - Containers: `tbody > tr`, `table tr`
+   - Fields: Column-based selectors
+
+13. **SemanticHTML5Profile** - Ultimate fallback (Legacy - may be deprecated)
+   - Containers: `article`, `section.item`
+   - Fields: Semantic tags (`<time>`, `<h1>`, `rel="author"`)
 
 6. **JoomlaProfile**, **MagentoProfile** - Alternative CMS/e-commerce
    - Joomla: `.item-`, `.category-`, `#joomla-`

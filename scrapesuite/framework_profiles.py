@@ -77,11 +77,12 @@ class FrameworkProfile:
                 # Handle patterns like ".class a" (selector with descendant)
                 if " " in base_pattern:
                     # Split into parent and child
-                    parent_class = base_pattern.split()[0][1:]  # Remove leading dot
-                    child_selector = " ".join(base_pattern.split()[1:])
+                    parts = base_pattern.split()
+                    parent_selector = parts[0][1:]  # Remove leading dot from first part
+                    child_selector = " ".join(parts[1:])
                     
                     # Find parent element
-                    parent = item_element.find(class_=parent_class)
+                    parent = item_element.find(class_=parent_selector)
                     if parent:
                         # Check if child exists
                         if child_selector == "a":
@@ -90,22 +91,70 @@ class FrameworkProfile:
                         elif child_selector.startswith("img"):
                             if parent.find("img"):
                                 return pattern
+                        elif child_selector.startswith("time"):
+                            if parent.find("time"):
+                                return pattern
+                        else:
+                            # Try generic tag search
+                            if parent.find(child_selector.split()[0]):
+                                return pattern
                 else:
                     # Simple class selector
                     elem = item_element.find(class_=class_name)
                     if elem:
                         return pattern
+            elif base_pattern.count(".") > 0 and not base_pattern.startswith("["):
+                # Handle tag.class patterns like "th.field-__str__"
+                if " " in base_pattern:
+                    # Complex selector with descendants
+                    parts = base_pattern.split()
+                    first_part = parts[0]
+                    
+                    # Parse tag.class
+                    if "." in first_part:
+                        tag_name, class_name = first_part.split(".", 1)
+                        parent = item_element.find(tag_name, class_=class_name)
+                    else:
+                        parent = item_element.find(class_=first_part)
+                    
+                    if parent:
+                        # Check for descendant
+                        child_selector = " ".join(parts[1:])
+                        if child_selector == "a":
+                            if parent.find("a", href=True):
+                                return pattern
+                        elif parent.find(child_selector.split()[0]):
+                            return pattern
+                else:
+                    # Simple tag.class pattern
+                    tag_name, class_name = base_pattern.split(".", 1)
+                    elem = item_element.find(tag_name, class_=class_name)
+                    if elem:
+                        return pattern
             elif base_pattern.startswith("["):
                 # Attribute selector - parse it
                 # Simple implementation for common cases
-                if "=" in base_pattern:
+                if "*=" in base_pattern:
+                    # Partial match selector like [class*='title']
+                    attr_name = base_pattern.split("*=")[0].replace("[", "").strip()
+                    search_value = base_pattern.split("*=")[1].replace("]", "").replace("'", "").replace('"', "").strip()
+                    
+                    # Find element with attribute containing value
+                    for elem in item_element.find_all():
+                        attr_val = elem.get(attr_name, "")
+                        if isinstance(attr_val, list):
+                            attr_val = " ".join(attr_val)
+                        if search_value.lower() in str(attr_val).lower():
+                            return pattern
+                elif "=" in base_pattern:
                     attr_name = base_pattern.split("=")[0].replace("[", "").strip()
                     elem = item_element.find(attrs={attr_name: True})
                     if elem:
                         return pattern
             else:
-                # Tag selector
-                elem = item_element.find(base_pattern)
+                # Tag selector or more complex selector
+                # Try to find element by tag name
+                elem = item_element.find(base_pattern.split()[0])  # Get first part for tag selectors
                 if elem:
                     return pattern
         
@@ -387,13 +436,247 @@ class ShopifyProfile(FrameworkProfile):
         }
 
 
+class DjangoAdminProfile(FrameworkProfile):
+    """Django Admin interface detection."""
+    
+    name = "django_admin"
+    
+    @classmethod
+    def detect(cls, html: str, item_element: Tag | None = None) -> bool:
+        """Detect Django Admin by looking for admin-specific classes and meta tags."""
+        django_indicators = [
+            "django-admin",
+            "grp-",  # Django Grappelli
+            "suit-",  # Django Suit
+            "/admin/",
+            "djdt",  # Django Debug Toolbar
+        ]
+        return any(indicator in html for indicator in django_indicators)
+    
+    @classmethod
+    def get_item_selector_hints(cls) -> list[str]:
+        """Django Admin list view selectors."""
+        return [
+            "tbody tr",
+            ".result",
+            ".grp-row",
+            "tr.row1, tr.row2",
+        ]
+    
+    @classmethod
+    def get_field_mappings(cls) -> dict[str, list[str]]:
+        """Django Admin field mappings."""
+        return {
+            "title": [
+                "th.field-__str__ a",
+                ".field-title a",
+                ".field-name a",
+            ],
+            "url": [
+                "th.field-__str__ a::attr(href)",
+                ".field-title a::attr(href)",
+            ],
+            "date": [
+                ".field-created",
+                ".field-modified",
+                ".field-date",
+                ".field-published",
+            ],
+            "author": [
+                ".field-author",
+                ".field-user",
+                ".field-created_by",
+            ],
+        }
+
+
+class NextJSProfile(FrameworkProfile):
+    """Next.js application detection."""
+    
+    name = "nextjs"
+    
+    @classmethod
+    def detect(cls, html: str, item_element: Tag | None = None) -> bool:
+        """Detect Next.js by looking for __NEXT_DATA__ and Next.js-specific attributes."""
+        nextjs_indicators = [
+            "__NEXT_DATA__",
+            "__next",
+            "data-nextjs",
+            "/_next/",
+        ]
+        return any(indicator in html for indicator in nextjs_indicators)
+    
+    @classmethod
+    def get_item_selector_hints(cls) -> list[str]:
+        """Common Next.js component patterns."""
+        return [
+            "[class*='card']",
+            "[class*='item']",
+            "[class*='post']",
+            "article",
+            "[data-item]",
+        ]
+    
+    @classmethod
+    def get_field_mappings(cls) -> dict[str, list[str]]:
+        """Next.js typically uses modular CSS or Tailwind - look for semantic patterns."""
+        return {
+            "title": [
+                "h2 a",
+                "h3 a",
+                "[class*='title']",
+                "[class*='heading']",
+            ],
+            "url": [
+                "a[href^='/']::attr(href)",
+                "[class*='link']::attr(href)",
+            ],
+            "date": [
+                "time",
+                "[datetime]",
+                "[class*='date']",
+            ],
+            "author": [
+                "[class*='author']",
+                "[rel='author']",
+            ],
+            "image": [
+                "img[src]",
+                "[class*='image'] img",
+            ],
+        }
+
+
+class ReactComponentProfile(FrameworkProfile):
+    """Generic React application detection."""
+    
+    name = "react"
+    
+    @classmethod
+    def detect(cls, html: str, item_element: Tag | None = None) -> bool:
+        """Detect React by looking for data-react attributes and root div."""
+        react_indicators = [
+            "data-reactroot",
+            "data-react-",
+            "__REACT",
+        ]
+        # Only match id="root" or id="app" if data-react* is also present
+        if any(indicator in html for indicator in react_indicators):
+            return True
+        # Be more specific - don't match generic id="app" unless React-specific markers exist
+        if 'id="root"' in html and ("data-react" in html or "React" in html):
+            return True
+        return False
+    
+    @classmethod
+    def get_item_selector_hints(cls) -> list[str]:
+        """Common React component patterns."""
+        return [
+            "[class*='Card']",
+            "[class*='Item']",
+            "[class*='Post']",
+            "[class*='Article']",
+            "article",
+            "[data-testid*='item']",
+        ]
+    
+    @classmethod
+    def get_field_mappings(cls) -> dict[str, list[str]]:
+        """React component field mappings (typically use camelCase)."""
+        return {
+            "title": [
+                "[class*='Title']",
+                "[class*='Heading']",
+                "h2",
+                "h3",
+            ],
+            "url": [
+                "a[href]::attr(href)",
+                "[class*='Link']::attr(href)",
+            ],
+            "date": [
+                "time",
+                "[datetime]",
+                "[class*='Date']",
+                "[class*='Timestamp']",
+            ],
+            "author": [
+                "[class*='Author']",
+                "[class*='User']",
+            ],
+            "description": [
+                "[class*='Description']",
+                "[class*='Excerpt']",
+                "p",
+            ],
+        }
+
+
+class VueJSProfile(FrameworkProfile):
+    """Vue.js application detection."""
+    
+    name = "vuejs"
+    
+    @classmethod
+    def detect(cls, html: str, item_element: Tag | None = None) -> bool:
+        """Detect Vue.js by looking for v- directives and Vue-specific attributes."""
+        vue_indicators = [
+            "v-for=",
+            "v-if=",
+            "v-bind:",
+            ":key=",
+            "@click=",
+            "__VUE__",
+        ]
+        return any(indicator in html for indicator in vue_indicators)
+    
+    @classmethod
+    def get_item_selector_hints(cls) -> list[str]:
+        """Common Vue.js component patterns."""
+        return [
+            "[class*='card']",
+            "[class*='item']",
+            "[class*='post']",
+            "article",
+            "[v-for]",
+        ]
+    
+    @classmethod
+    def get_field_mappings(cls) -> dict[str, list[str]]:
+        """Vue.js component field mappings."""
+        return {
+            "title": [
+                "[class*='title']",
+                "h2",
+                "h3",
+            ],
+            "url": [
+                "a[href]::attr(href)",
+                "[class*='link']::attr(href)",
+            ],
+            "date": [
+                "time",
+                "[datetime]",
+                "[class*='date']",
+            ],
+            "author": [
+                "[class*='author']",
+            ],
+        }
+
+
 # Registry of all available profiles
+# Order matters: More specific frameworks should come before generic ones
 FRAMEWORK_PROFILES: list[type[FrameworkProfile]] = [
-    DrupalViewsProfile,
-    WordPressProfile,
-    BootstrapProfile,
-    ShopifyProfile,
-    TailwindProfile,
+    DjangoAdminProfile,     # Very specific (Django admin)
+    NextJSProfile,          # Specific (Next.js apps)
+    ReactComponentProfile,  # Specific (React apps)
+    VueJSProfile,           # Specific (Vue.js apps)
+    DrupalViewsProfile,     # Specific CMS
+    ShopifyProfile,         # Specific e-commerce
+    TailwindProfile,        # Framework/utility CSS
+    BootstrapProfile,       # Component library
+    WordPressProfile,       # Generic CMS (might match "post" class from others)
 ]
 
 
