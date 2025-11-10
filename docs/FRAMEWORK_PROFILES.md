@@ -2,9 +2,44 @@
 
 ## Overview
 
-ScrapeSuite now integrates **framework detection** directly into the item selector analysis phase. When the wizard analyzes HTML, it automatically detects the underlying CMS/framework (Drupal, WordPress, Bootstrap, etc.) and **prioritizes framework-typical patterns** in the 25-option selector table.
+ScrapeSuite integrates **framework detection** directly into the item selector analysis phase. When the wizard analyzes HTML, it automatically detects the underlying CMS/framework (Drupal, WordPress, Bootstrap, etc.) and **prioritizes framework-typical patterns** in the 25-option selector table.
 
 This makes the wizard significantly smarter by guiding users toward the correct selectors immediately, rather than burying them among generic patterns.
+
+## Architecture
+
+**New in v2.1**: Framework profiles are now **modular** - organized by category for maintainability.
+
+```
+scrapesuite/framework_profiles/
+├── __init__.py              # Registry & detection functions
+├── base.py                  # Base class & utilities
+├── cms/                     # Content Management Systems
+│   ├── drupal.py           # DrupalViewsProfile
+│   └── wordpress.py        # WordPressProfile
+├── frameworks/             # JavaScript Frameworks
+│   ├── django.py           # DjangoAdminProfile
+│   ├── nextjs.py           # NextJSProfile
+│   ├── react.py            # ReactComponentProfile
+│   └── vue.py              # VueJSProfile
+├── css/                    # CSS Frameworks
+│   ├── bootstrap.py        # BootstrapProfile
+│   └── tailwind.py         # TailwindProfile
+├── ecommerce/              # E-Commerce Platforms
+│   └── shopify.py          # ShopifyProfile
+└── universal/              # Universal patterns (future)
+    ├── schema_org.py       # Schema.org microdata (planned)
+    ├── opengraph.py        # Open Graph meta tags (planned)
+    └── twitter_cards.py    # Twitter Card meta tags (planned)
+```
+
+### Benefits of Modular Structure
+
+- ✅ **Easy to add new profiles**: Just create a file in the appropriate category
+- ✅ **Better code organization**: Related profiles grouped together
+- ✅ **Simpler testing**: Test individual categories independently
+- ✅ **Clear documentation**: Category structure self-documenting
+- ✅ **Type safety**: Mypy strict mode enforced across all profiles
 
 ## How It Works
 
