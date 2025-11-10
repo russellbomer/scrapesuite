@@ -316,6 +316,10 @@ def _analyze_html_and_build_selectors(entry_url: str) -> dict[str, Any] | None: 
         max_display = min(25, len(candidates))
         
         if console:
+            console.print("\n[cyan]💡 Tip: Look for a selector that represents the whole item/row, not individual fields.[/cyan]")
+            console.print("[cyan]   Good: A row containing title + date + author[/cyan]")
+            console.print("[cyan]   Bad: Just the title field or just the date field[/cyan]\n")
+            
             table = Table(title="Detected Item Patterns")
             table.add_column("Option", style="cyan", width=6)
             table.add_column("Selector", style="green", width=20)
@@ -336,6 +340,9 @@ def _analyze_html_and_build_selectors(entry_url: str) -> dict[str, Any] | None: 
                 )
             console.print(table)
         else:
+            print("\n💡 Tip: Look for a selector that represents the whole item/row, not individual fields.")
+            print("   Good: A row containing title + date + author")
+            print("   Bad: Just the title field or just the date field\n")
             print("\nDetected Item Patterns:")
             for i, candidate in enumerate(candidates[:max_display], 1):
                 print(f"{i}. {candidate['selector']} ({candidate['count']} items)")
@@ -346,7 +353,7 @@ def _analyze_html_and_build_selectors(entry_url: str) -> dict[str, Any] | None: 
                     print(f"   Sample: {sample}")
         
         # Let user select item selector
-        choices = [f"{c['selector']} ({c['count']} items)" for c in candidates[:max_display]]
+        choices = [f"{i}. {c['selector']} ({c['count']} items)" for i, c in enumerate(candidates[:max_display], 1)]
         choices.append("Skip (use manual config)")
         
         selection = _prompt_select("Select item pattern", choices, default=choices[0])
@@ -354,8 +361,9 @@ def _analyze_html_and_build_selectors(entry_url: str) -> dict[str, Any] | None: 
         if "Skip" in selection:
             return None
         
-        # Extract selector from selection
-        item_selector = selection.split(" (")[0]
+        # Extract selector from selection (remove option number and count)
+        # Format: "1. .selector (10 items)" -> ".selector"
+        item_selector = selection.split(". ", 1)[1].split(" (")[0]
         
         # Get sample item for field detection
         soup = BeautifulSoup(html, "html.parser")
@@ -424,22 +432,35 @@ def _analyze_html_and_build_selectors(entry_url: str) -> dict[str, Any] | None: 
         if not field_selectors:
             if console:
                 console.print("[yellow]⚠ No fields were auto-detected. You'll need to add them manually to the YAML.[/yellow]")
+                console.print("[yellow]💡 Tip: The selected container might be too specific (e.g., a single field instead of the whole item).[/yellow]")
+                console.print("[yellow]   Try selecting a broader container that includes title, URL, date, etc.[/yellow]")
             else:
                 print("⚠ No fields were auto-detected. You'll need to add them manually to the YAML.")
+                print("💡 Tip: The selected container might be too specific (e.g., a single field instead of the whole item).")
+                print("   Try selecting a broader container that includes title, URL, date, etc.")
             
-            # Ask if user wants to continue without fields or skip selector generation
-            if not _prompt_confirm("Continue with item selector only (no field selectors)?", default=False):
+            # Ask if user wants to continue without fields or go back to select a different pattern
+            if _prompt_confirm("Go back and select a different pattern?", default=True):
+                if console:
+                    console.print("[yellow]Please select a broader container (e.g., the row/item, not individual fields)[/yellow]")
+                else:
+                    print("Please select a broader container (e.g., the row/item, not individual fields)")
+                return None  # Signal to retry
+            
+            # If user insists on continuing, warn them
+            if not _prompt_confirm("Continue anyway? (You'll need to manually edit the YAML)", default=False):
                 if console:
                     console.print("[yellow]Skipping selector generation[/yellow]")
                 else:
                     print("Skipping selector generation")
                 return None
             
-            # Return with empty fields - user will need to add manually
-            return {
-                "item": item_selector,
-                "fields": {},
-            }
+            # Return "skip" signal - don't use GenericConnector without fields
+            if console:
+                console.print("[yellow]Skipping GenericConnector - you'll need to write a custom parser[/yellow]")
+            else:
+                print("Skipping GenericConnector - you'll need to write a custom parser")
+            return None  # Return None to skip GenericConnector
         
         # Preview extraction with all fields
         if field_selectors:
