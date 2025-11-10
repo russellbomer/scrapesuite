@@ -312,8 +312,8 @@ def _analyze_html_and_build_selectors(entry_url: str) -> dict[str, Any] | None: 
                 print("No repeated patterns found. Using simple link extraction.")
             return None
         
-        # Display candidates (show up to 12 for better coverage)
-        max_display = min(12, len(candidates))
+        # Display candidates (show up to 25 for better coverage)
+        max_display = min(25, len(candidates))
         
         if console:
             table = Table(title="Detected Item Patterns")

@@ -541,7 +541,7 @@ def find_item_selector(html: str, min_items: int = 3) -> list[dict[str, Any]]:
     
     sorted_candidates = sorted(unique_candidates, key=sort_key, reverse=True)
     
-    # Return top 15 candidates (more options for user)
+    # Return top 25 candidates (more options for user)
     # But filter out obvious non-content elements
     filtered = []
     for candidate in sorted_candidates:
@@ -549,10 +549,10 @@ def find_item_selector(html: str, min_items: int = 3) -> list[dict[str, Any]]:
         if candidate["count"] > 100 and not candidate.get("sample_url"):
             continue
         filtered.append(candidate)
-        if len(filtered) >= 15:
+        if len(filtered) >= 25:
             break
     
-    return filtered if filtered else sorted_candidates[:15]
+    return filtered if filtered else sorted_candidates[:25]
 
 
 def _make_selector_robust(element: Tag, item_element: Tag) -> str:
