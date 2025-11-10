@@ -312,191 +312,198 @@ def _analyze_html_and_build_selectors(entry_url: str) -> dict[str, Any] | None: 
                 print("No repeated patterns found. Using simple link extraction.")
             return None
         
-        # Display candidates (show up to 25 for better coverage)
-        max_display = min(25, len(candidates))
-        
-        if console:
-            console.print("\n[cyan]💡 Tip: Look for a selector that represents the whole item/row, not individual fields.[/cyan]")
-            console.print("[cyan]   Good: A row containing title + date + author[/cyan]")
-            console.print("[cyan]   Bad: Just the title field or just the date field[/cyan]\n")
+        # Loop to allow user to go back and try different patterns
+        while True:
+            # Display candidates (show up to 25 for better coverage)
+            max_display = min(25, len(candidates))
             
-            table = Table(title="Detected Item Patterns")
-            table.add_column("Option", style="cyan", width=6)
-            table.add_column("Selector", style="green", width=20)
-            table.add_column("Count", style="yellow", width=6)
-            table.add_column("Sample Content", style="white")
-            
-            for i, candidate in enumerate(candidates[:max_display], 1):
-                # Truncate sample title intelligently
-                sample = candidate.get("sample_title", "")
-                if len(sample) > 60:
-                    sample = sample[:57] + "..."
-                
-                table.add_row(
-                    str(i),
-                    candidate["selector"],
-                    str(candidate["count"]),
-                    sample,
-                )
-            console.print(table)
-        else:
-            print("\n💡 Tip: Look for a selector that represents the whole item/row, not individual fields.")
-            print("   Good: A row containing title + date + author")
-            print("   Bad: Just the title field or just the date field\n")
-            print("\nDetected Item Patterns:")
-            for i, candidate in enumerate(candidates[:max_display], 1):
-                print(f"{i}. {candidate['selector']} ({candidate['count']} items)")
-                if candidate.get("sample_title"):
-                    sample = candidate['sample_title']
-                    if len(sample) > 70:
-                        sample = sample[:67] + "..."
-                    print(f"   Sample: {sample}")
-        
-        # Let user select item selector
-        choices = [f"{i}. {c['selector']} ({c['count']} items)" for i, c in enumerate(candidates[:max_display], 1)]
-        choices.append("Skip (use manual config)")
-        
-        selection = _prompt_select("Select item pattern", choices, default=choices[0])
-        
-        if "Skip" in selection:
-            return None
-        
-        # Extract selector from selection (remove option number and count)
-        # Format: "1. .selector (10 items)" -> ".selector"
-        item_selector = selection.split(". ", 1)[1].split(" (")[0]
-        
-        # Get sample item for field detection
-        soup = BeautifulSoup(html, "html.parser")
-        sample_items = soup.select(item_selector)
-        
-        if not sample_items:
             if console:
-                console.print("[red]Could not find items with selected selector[/red]")
-            else:
-                print("ERROR: Could not find items with selected selector")
-            return None
-        
-        sample_item = sample_items[0]
-        
-        # Build field selectors interactively
-        field_selectors = {}
-        
-        if console:
-            console.print("\n[cyan]Building field selectors...[/cyan]")
-        else:
-            print("\nBuilding field selectors...")
-        
-        # Common fields to detect
-        field_types = ["title", "url", "date", "author", "score", "image"]
-        
-        for field_type in field_types:
-            suggested_selector = generate_field_selector(sample_item, field_type)
-            
-            if not suggested_selector:
-                continue  # Field type not found
-            
-            # Preview extracted value
-            try:
-                if "::attr(" in suggested_selector:
-                    # Extract attribute
-                    parts = suggested_selector.split("::attr(")
-                    child_selector = parts[0].strip()
-                    attr_name = parts[1].rstrip(")")
+                console.print("\n[cyan]💡 Tip: Look for a selector that represents the whole item/row, not individual fields.[/cyan]")
+                console.print("[cyan]   Good: A row containing title + date + author[/cyan]")
+                console.print("[cyan]   Bad: Just the title field or just the date field[/cyan]\n")
+                
+                table = Table(title="Detected Item Patterns")
+                table.add_column("Option", style="cyan", width=6)
+                table.add_column("Selector", style="green", width=20)
+                table.add_column("Count", style="yellow", width=6)
+                table.add_column("Sample Content", style="white")
+                
+                for i, candidate in enumerate(candidates[:max_display], 1):
+                    # Truncate sample title intelligently
+                    sample = candidate.get("sample_title", "")
+                    if len(sample) > 60:
+                        sample = sample[:57] + "..."
                     
-                    if child_selector:
-                        elem = sample_item.select_one(child_selector)
-                        preview_value = elem.get(attr_name, "") if elem else ""
-                    else:
-                        preview_value = sample_item.get(attr_name, "")
-                else:
-                    # Extract text
-                    elem = sample_item.select_one(suggested_selector)
-                    preview_value = elem.get_text(strip=True)[:100] if elem else ""
-            except Exception:
-                preview_value = "[error]"
-            
-            if not preview_value:
-                continue  # Skip empty fields
-            
-            # Ask user if they want this field
-            prompt = f"Include '{field_type}'? (preview: {preview_value[:50]}...)"
-            if _prompt_confirm(prompt, default=True):
-                # Allow customization
-                custom_selector = _prompt_text(
-                    f"Selector for '{field_type}'",
-                    suggested_selector,
-                )
-                field_selectors[field_type] = custom_selector
-        
-        # Check if we found any fields
-        if not field_selectors:
-            if console:
-                console.print("[yellow]⚠ No fields were auto-detected. You'll need to add them manually to the YAML.[/yellow]")
-                console.print("[yellow]💡 Tip: The selected container might be too specific (e.g., a single field instead of the whole item).[/yellow]")
-                console.print("[yellow]   Try selecting a broader container that includes title, URL, date, etc.[/yellow]")
-            else:
-                print("⚠ No fields were auto-detected. You'll need to add them manually to the YAML.")
-                print("💡 Tip: The selected container might be too specific (e.g., a single field instead of the whole item).")
-                print("   Try selecting a broader container that includes title, URL, date, etc.")
-            
-            # Ask if user wants to continue without fields or go back to select a different pattern
-            if _prompt_confirm("Go back and select a different pattern?", default=True):
-                if console:
-                    console.print("[yellow]Please select a broader container (e.g., the row/item, not individual fields)[/yellow]")
-                else:
-                    print("Please select a broader container (e.g., the row/item, not individual fields)")
-                return None  # Signal to retry
-            
-            # If user insists on continuing, warn them
-            if not _prompt_confirm("Continue anyway? (You'll need to manually edit the YAML)", default=False):
-                if console:
-                    console.print("[yellow]Skipping selector generation[/yellow]")
-                else:
-                    print("Skipping selector generation")
-                return None
-            
-            # Return "skip" signal - don't use GenericConnector without fields
-            if console:
-                console.print("[yellow]Skipping GenericConnector - you'll need to write a custom parser[/yellow]")
-            else:
-                print("Skipping GenericConnector - you'll need to write a custom parser")
-            return None  # Return None to skip GenericConnector
-        
-        # Preview extraction with all fields
-        if field_selectors:
-            if console:
-                console.print("\n[cyan]Preview of extracted data:[/cyan]")
-            else:
-                print("\nPreview of extracted data:")
-            
-            previews = preview_extraction(html, item_selector, field_selectors)
-            
-            if console:
-                table = Table()
-                for field_name in field_selectors.keys():
-                    table.add_column(field_name, style="cyan")
-                
-                for item_data in previews:
-                    table.add_row(*[str(item_data.get(f, ""))[:30] for f in field_selectors.keys()])
-                
+                    table.add_row(
+                        str(i),
+                        candidate["selector"],
+                        str(candidate["count"]),
+                        sample,
+                    )
                 console.print(table)
             else:
-                for i, item_data in enumerate(previews, 1):
-                    print(f"\nItem {i}:")
-                    for field_name, value in item_data.items():
-                        print(f"  {field_name}: {value[:50]}")
+                print("\n💡 Tip: Look for a selector that represents the whole item/row, not individual fields.")
+                print("   Good: A row containing title + date + author")
+                print("   Bad: Just the title field or just the date field\n")
+                print("\nDetected Item Patterns:")
+                for i, candidate in enumerate(candidates[:max_display], 1):
+                    print(f"{i}. {candidate['selector']} ({candidate['count']} items)")
+                    if candidate.get("sample_title"):
+                        sample = candidate['sample_title']
+                        if len(sample) > 70:
+                            sample = sample[:67] + "..."
+                        print(f"   Sample: {sample}")
             
-            if not _prompt_confirm("Does this look correct?", default=True):
-                if console:
-                    console.print("[yellow]Skipping selector generation[/yellow]")
-                else:
-                    print("Skipping selector generation")
+            # Let user select item selector
+            choices = [f"{i}. {c['selector']} ({c['count']} items)" for i, c in enumerate(candidates[:max_display], 1)]
+            choices.append("Skip (use manual config)")
+            
+            selection = _prompt_select("Select item pattern", choices, default=choices[0])
+            
+            if "Skip" in selection:
                 return None
-        
-        return {
-            "item": item_selector,
-            "fields": field_selectors,
-        }
+            
+            # Extract selector from selection (remove option number and count)
+            # Format: "1. .selector (10 items)" -> ".selector"
+            item_selector = selection.split(". ", 1)[1].split(" (")[0]
+            
+            # Get sample item for field detection
+            soup = BeautifulSoup(html, "html.parser")
+            sample_items = soup.select(item_selector)
+            
+            if not sample_items:
+                if console:
+                    console.print("[red]Could not find items with selected selector[/red]")
+                else:
+                    print("ERROR: Could not find items with selected selector")
+                # Go back to selection
+                continue
+            
+            sample_item = sample_items[0]
+            
+            # Build field selectors interactively
+            field_selectors = {}
+            
+            if console:
+                console.print("\n[cyan]Building field selectors...[/cyan]")
+            else:
+                print("\nBuilding field selectors...")
+            
+            # Common fields to detect
+            field_types = ["title", "url", "date", "author", "score", "image"]
+            
+            for field_type in field_types:
+                suggested_selector = generate_field_selector(sample_item, field_type)
+                
+                if not suggested_selector:
+                    continue  # Field type not found
+                
+                # Preview extracted value
+                try:
+                    if "::attr(" in suggested_selector:
+                        # Extract attribute
+                        parts = suggested_selector.split("::attr(")
+                        child_selector = parts[0].strip()
+                        attr_name = parts[1].rstrip(")")
+                        
+                        if child_selector:
+                            elem = sample_item.select_one(child_selector)
+                            preview_value = elem.get(attr_name, "") if elem else ""
+                        else:
+                            preview_value = sample_item.get(attr_name, "")
+                    else:
+                        # Extract text
+                        elem = sample_item.select_one(suggested_selector)
+                        preview_value = elem.get_text(strip=True)[:100] if elem else ""
+                except Exception:
+                    preview_value = "[error]"
+                
+                if not preview_value:
+                    continue  # Skip empty fields
+                
+                # Ask user if they want this field
+                prompt = f"Include '{field_type}'? (preview: {preview_value[:50]}...)"
+                if _prompt_confirm(prompt, default=True):
+                    # Allow customization
+                    custom_selector = _prompt_text(
+                        f"Selector for '{field_type}'",
+                        suggested_selector,
+                    )
+                    field_selectors[field_type] = custom_selector
+            
+            # Check if we found any fields
+            if not field_selectors:
+                if console:
+                    console.print("[yellow]⚠ No fields were auto-detected. You'll need to add them manually to the YAML.[/yellow]")
+                    console.print("[yellow]💡 Tip: The selected container might be too specific (e.g., a single field instead of the whole item).[/yellow]")
+                    console.print("[yellow]   Try selecting a broader container that includes title, URL, date, etc.[/yellow]")
+                else:
+                    print("⚠ No fields were auto-detected. You'll need to add them manually to the YAML.")
+                    print("💡 Tip: The selected container might be too specific (e.g., a single field instead of the whole item).")
+                    print("   Try selecting a broader container that includes title, URL, date, etc.")
+                
+                # Ask if user wants to continue without fields or go back to select a different pattern
+                if _prompt_confirm("Go back and select a different pattern?", default=True):
+                    if console:
+                        console.print("[yellow]Please select a broader container (e.g., the row/item, not individual fields)[/yellow]")
+                    else:
+                        print("Please select a broader container (e.g., the row/item, not individual fields)")
+                    # Continue the loop to show patterns again
+                    continue
+                
+                # If user insists on continuing, warn them
+                if not _prompt_confirm("Continue anyway? (You'll need to manually edit the YAML)", default=False):
+                    if console:
+                        console.print("[yellow]Skipping selector generation[/yellow]")
+                    else:
+                        print("Skipping selector generation")
+                    return None
+                
+                # Return "skip" signal - don't use GenericConnector without fields
+                if console:
+                    console.print("[yellow]Skipping GenericConnector - you'll need to write a custom parser[/yellow]")
+                else:
+                    print("Skipping GenericConnector - you'll need to write a custom parser")
+                return None  # Return None to skip GenericConnector
+            
+            # Preview extraction with all fields
+            if field_selectors:
+                if console:
+                    console.print("\n[cyan]Preview of extracted data:[/cyan]")
+                else:
+                    print("\nPreview of extracted data:")
+                
+                previews = preview_extraction(html, item_selector, field_selectors)
+                
+                if console:
+                    table = Table()
+                    for field_name in field_selectors.keys():
+                        table.add_column(field_name, style="cyan")
+                    
+                    for item_data in previews:
+                        table.add_row(*[str(item_data.get(f, ""))[:30] for f in field_selectors.keys()])
+                    
+                    console.print(table)
+                else:
+                    for i, item_data in enumerate(previews, 1):
+                        print(f"\nItem {i}:")
+                        for field_name, value in item_data.items():
+                            print(f"  {field_name}: {value[:50]}")
+                
+                if not _prompt_confirm("Does this look correct?", default=True):
+                    if console:
+                        console.print("[yellow]Let's try a different pattern[/yellow]")
+                    else:
+                        print("Let's try a different pattern")
+                    # Continue the loop to show patterns again
+                    continue
+            
+            # Success! Return the selectors
+            return {
+                "item": item_selector,
+                "fields": field_selectors,
+            }
+
     
     except Exception as e:
         error_msg = f"HTML analysis failed: {e}"
