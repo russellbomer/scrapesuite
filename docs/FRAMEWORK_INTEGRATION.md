@@ -12,19 +12,32 @@ This makes the wizard significantly smarter by guiding users toward the correct 
 
 When `find_item_selector(html)` is called, the system:
 
-1. **Detects the framework** using `detect_framework(html)`
-   - Analyzes meta tags (`<meta name="Generator" content="Drupal 9">`)
-   - Scans for framework-specific CSS classes (`.views-row`, `.hentry`, `.card`)
-   - Checks for framework scripts and stylesheets
-   - Scores each framework profile and returns the best match
+1. **Detects the framework** using confidence scoring
+   - Each framework profile returns a score from 0-100
+   - Scores are based on multiple weighted signals:
+     - Meta tags (high weight): `<meta name="Generator" content="Drupal 9">`
+     - CSS classes (medium-high): `.views-row`, `.hentry`, `.card`
+     - Scripts/URLs (medium): `/_next/`, `/wp-content/`
+     - Data attributes (medium-low): `data-reactroot`, `v-for=`
+   - The framework with the highest score above threshold (40) is selected
+   - Use `detect_all_frameworks(html)` to see all matches with scores
 
-2. **Extracts framework-specific hints**
+2. **Multi-Signal Scoring Example**
+   ```python
+   # Django Admin detection
+   if "django-admin" in html:     score += 40  # Strong indicator
+   if "/admin/" in html:          score += 20  # Common admin path
+   if "field-" in html:           score += 20  # Admin field classes
+   # Total: 80 = high confidence
+   ```
+
+3. **Extracts framework-specific hints**
    - Each framework profile defines `get_item_selector_hints()`
    - Example: Drupal Views → `[".views-row", ".view-content > div"]`
    - Example: WordPress → `[".hentry", ".post", "article.post"]`
    - Example: Bootstrap → `[".card", ".list-group-item"]`
 
-3. **Adds framework hints as high-priority candidates**
+4. **Adds framework hints as high-priority candidates**
    - Framework hints get `"very_high"` confidence (4 points)
    - Regular high-confidence patterns get 3 points
    - This ensures framework patterns appear at the top
@@ -365,16 +378,145 @@ User testing FDA URL:
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## API Reference
+
+### Confidence Scoring
+
+**New in v2.0**: Framework detection now returns confidence scores (0-100) instead of boolean values.
+
+#### detect_framework(html, item_element=None)
+
+Returns the best matching framework profile if score >= 40 (threshold).
+
+```python
+from scrapesuite.framework_profiles import detect_framework
+
+html = '<div class="views-row"><h2>Title</h2></div>'
+framework = detect_framework(html)
+
+if framework:
+    print(f"Detected: {framework.name}")  # Output: "drupal_views"
+else:
+    print("No framework detected")
+```
+
+#### detect_all_frameworks(html, item_element=None)
+
+Returns list of all matching frameworks with scores, sorted highest first.
+
+```python
+from scrapesuite.framework_profiles import detect_all_frameworks
+
+html = '''
+<article class="post card">
+    <h2 class="entry-title card-title">Title</h2>
+</article>
+<link href="/wp-content/themes/theme/style.css">
+'''
+
+results = detect_all_frameworks(html)
+for framework, score in results:
+    print(f"{framework.name}: {score}")
+
+# Output:
+# wordpress: 70
+# bootstrap: 55
+```
+
+#### FrameworkProfile.detect(html, item_element=None)
+
+Each profile's detect method now returns an int score (0-100):
+
+```python
+from scrapesuite.framework_profiles import DjangoAdminProfile
+
+html = '<body class="django-admin"><table><tr class="field-name">...</tr></table></body>'
+score = DjangoAdminProfile.detect(html)
+print(f"Django Admin confidence: {score}")  # Output: 60
+```
+
+**Scoring Guidelines:**
+- **80-100**: Very high confidence (multiple strong indicators)
+- **60-79**: High confidence (strong indicator + supporting evidence)
+- **40-59**: Medium confidence (meets threshold, single strong indicator)
+- **20-39**: Low confidence (below threshold, weak signals)
+- **0-19**: No confidence (no indicators found)
+
+### Multi-Framework Sites
+
+Many sites use multiple frameworks (e.g., WordPress + Bootstrap, Next.js + Tailwind):
+
+```python
+from scrapesuite.framework_profiles import detect_all_frameworks
+
+html = """
+<div id="__next" class="flex gap-4 p-6 rounded-lg">
+    <article class="card">Content</article>
+</div>
+<script id="__NEXT_DATA__"></script>
+"""
+
+results = detect_all_frameworks(html)
+# Results:
+# - NextJSProfile: 70 (has __NEXT_DATA__ and __next)
+# - TailwindProfile: 60 (many utility classes)
+# - BootstrapProfile: 25 (has .card but not Bootstrap-specific)
+```
+
+The primary framework (highest score) is used for selector hints, but you can leverage multiple frameworks' field mappings if needed.
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ wizard.py: _analyze_html_and_build_selectors()             │
+│ - Fetches HTML from user URL                                │
+│ - Calls find_item_selector(html)                            │
+│ - Displays framework name if detected                       │
+│ - Shows 25-option table with framework patterns at top      │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│ inspector.py: find_item_selector(html)                      │
+│ 1. detect_framework(html) → framework or None (score ≥ 40) │
+│ 2. Add framework hints as very_high confidence candidates   │
+│ 3. Run Strategies 0a-6 (table rows, classes, semantic, etc.)│
+│ 4. Boost framework-matching patterns with +500 score        │
+│ 5. Sort: (confidence, framework_boost, title_boost, count)  │
+│ 6. Return top 25 results                                     │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│ framework_profiles.py: Framework Detection & Mapping        │
+│ - detect_framework(): Scores 9 profiles, returns best ≥ 40  │
+│ - detect_all_frameworks(): Returns all with scores > 0      │
+│ - is_framework_pattern(): Checks if selector matches        │
+│ - get_framework_field_selector(): Maps field types          │
+│ - Profiles: Drupal, WordPress, Bootstrap, Tailwind, etc.    │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│ detection_strategies.py: Advanced Field Detection           │
+│ - detect_by_table_headers(): Parse header row, map columns  │
+│ - detect_by_semantic_structure(): Use <time>, <article>, etc│
+│ - apply_all_strategies(): Merge results by priority         │
+└─────────────────────────────────────────────────────────────┘
+```
+
 ## Future Enhancements
 
 1. **More Framework Profiles**
-   - Django admin interface
-   - Next.js / Nuxt.js patterns
-   - Vue.js component libraries
-   - React component patterns
+   - WooCommerce e-commerce
+   - Angular/AngularJS applications
+   - Svelte/SvelteKit patterns
+   - Nuxt.js (Vue meta-framework)
+   - Ghost blogging platform
+   - Webflow CMS
 
-2. **Machine Learning Scoring**
-   - Train model on successful scraping patterns
+2. **Enhanced Detection**
+   - Schema.org/JSON-LD extraction
+   - Open Graph meta tag fallback
+   - Multi-framework composite profiles
    - Adjust confidence scores based on success rate
    - Learn new framework signatures automatically
 

@@ -11,16 +11,17 @@ class FrameworkProfile:
     name: str = "generic"
     
     @classmethod
-    def detect(cls, html: str, item_element: Tag | None = None) -> bool:
+    def detect(cls, html: str, item_element: Tag | None = None) -> int:
         """
-        Detect if this framework is being used.
+        Detect if this framework is being used with confidence scoring.
         
         Args:
             html: Full page HTML
             item_element: Optional item container element
         
         Returns:
-            True if framework detected
+            Confidence score (0-100). 0 = not detected, 100 = very confident.
+            Threshold for detection is typically 50.
         """
         raise NotImplementedError
     
@@ -167,15 +168,29 @@ class DrupalViewsProfile(FrameworkProfile):
     name = "drupal_views"
     
     @classmethod
-    def detect(cls, html: str, item_element: Tag | None = None) -> bool:
+    def detect(cls, html: str, item_element: Tag | None = None) -> int:
         """Detect Drupal Views by looking for characteristic classes."""
-        if "views-row" in html or "views-field" in html:
-            return True
+        score = 0
+        
+        # Check HTML content for views-specific markers
+        if "views-row" in html:
+            score += 35
+        if "views-field" in html:
+            score += 25
+        if "view-content" in html:
+            score += 15
+        if "views-table" in html:
+            score += 10
+        
+        # Check item element if provided
         if item_element:
             classes = " ".join(item_element.get("class", []))
             if "views-row" in classes:
-                return True
-        return False
+                score += 25
+            if "views-field" in classes:
+                score += 10
+        
+        return min(score, 100)
     
     @classmethod
     def get_item_selector_hints(cls) -> list[str]:
@@ -239,16 +254,29 @@ class WordPressProfile(FrameworkProfile):
     name = "wordpress"
     
     @classmethod
-    def detect(cls, html: str, item_element: Tag | None = None) -> bool:
+    def detect(cls, html: str, item_element: Tag | None = None) -> int:
         """Detect WordPress by looking for characteristic classes."""
-        wp_indicators = ["wp-content", "post-", "entry-", "hentry"]
-        if any(indicator in html for indicator in wp_indicators):
-            return True
+        score = 0
+        
+        # Check for WordPress-specific indicators
+        if "wp-content" in html:
+            score += 30
+        if "post-" in html:
+            score += 20
+        if "entry-" in html:
+            score += 20
+        if "hentry" in html:
+            score += 15
+        if "wp-includes" in html:
+            score += 15
+        
+        # Check item element
         if item_element:
             classes = " ".join(item_element.get("class", []))
             if any(indicator in classes for indicator in ["post", "entry", "hentry", "article"]):
-                return True
-        return False
+                score += 20
+        
+        return min(score, 100)
     
     @classmethod
     def get_item_selector_hints(cls) -> list[str]:
@@ -306,15 +334,31 @@ class BootstrapProfile(FrameworkProfile):
     name = "bootstrap"
     
     @classmethod
-    def detect(cls, html: str, item_element: Tag | None = None) -> bool:
+    def detect(cls, html: str, item_element: Tag | None = None) -> int:
         """Detect Bootstrap by looking for characteristic classes."""
-        if "card" in html or "list-group-item" in html or "media" in html:
-            return True
+        score = 0
+        
+        # Bootstrap component indicators
+        if "card" in html:
+            score += 25
+        if "list-group-item" in html:
+            score += 25
+        if "media" in html:
+            score += 15
+        if "row" in html and "col" in html:
+            score += 15
+        if "btn-" in html:
+            score += 10
+        if "container" in html:
+            score += 10
+        
+        # Check item element
         if item_element:
             classes = " ".join(item_element.get("class", []))
             if any(indicator in classes for indicator in ["card", "list-group-item", "media"]):
-                return True
-        return False
+                score += 20
+        
+        return min(score, 100)
     
     @classmethod
     def get_item_selector_hints(cls) -> list[str]:
@@ -361,18 +405,33 @@ class TailwindProfile(FrameworkProfile):
     name = "tailwind"
     
     @classmethod
-    def detect(cls, html: str, item_element: Tag | None = None) -> bool:
+    def detect(cls, html: str, item_element: Tag | None = None) -> int:
         """
         Tailwind is harder to detect as it uses utility classes.
         Look for common patterns like flex, grid, space-y, etc.
         """
+        score = 0
+        
         tailwind_patterns = [
             "flex", "grid", "space-y", "gap-", "p-", "m-", 
-            "text-", "bg-", "rounded", "shadow"
+            "text-", "bg-", "rounded", "shadow", "border-",
+            "hover:", "dark:", "sm:", "md:", "lg:"
         ]
-        # Need multiple matches since these are generic
+        
+        # Count pattern matches (need multiple since these are generic)
         matches = sum(1 for pattern in tailwind_patterns if pattern in html)
-        return matches >= 5
+        
+        # Scale score based on matches (need at least 5 for confidence)
+        if matches >= 10:
+            score = 70
+        elif matches >= 8:
+            score = 60
+        elif matches >= 6:
+            score = 50
+        elif matches >= 4:
+            score = 30
+        
+        return score
     
     @classmethod
     def get_item_selector_hints(cls) -> list[str]:
@@ -396,10 +455,23 @@ class ShopifyProfile(FrameworkProfile):
     name = "shopify"
     
     @classmethod
-    def detect(cls, html: str, item_element: Tag | None = None) -> bool:
+    def detect(cls, html: str, item_element: Tag | None = None) -> int:
         """Detect Shopify by looking for product/collection classes."""
-        shopify_indicators = ["product-", "collection-", "shopify"]
-        return any(indicator in html for indicator in shopify_indicators)
+        score = 0
+        
+        # Shopify-specific indicators
+        if "product-" in html:
+            score += 30
+        if "collection-" in html:
+            score += 25
+        if "shopify" in html.lower():
+            score += 25
+        if "cart" in html and "product" in html:
+            score += 10
+        if "variant" in html:
+            score += 10
+        
+        return min(score, 100)
     
     @classmethod
     def get_item_selector_hints(cls) -> list[str]:
@@ -442,16 +514,25 @@ class DjangoAdminProfile(FrameworkProfile):
     name = "django_admin"
     
     @classmethod
-    def detect(cls, html: str, item_element: Tag | None = None) -> bool:
+    def detect(cls, html: str, item_element: Tag | None = None) -> int:
         """Detect Django Admin by looking for admin-specific classes and meta tags."""
-        django_indicators = [
-            "django-admin",
-            "grp-",  # Django Grappelli
-            "suit-",  # Django Suit
-            "/admin/",
-            "djdt",  # Django Debug Toolbar
-        ]
-        return any(indicator in html for indicator in django_indicators)
+        score = 0
+        
+        # Django Admin indicators
+        if "django-admin" in html:
+            score += 40
+        if "grp-" in html:  # Django Grappelli
+            score += 30
+        if "suit-" in html:  # Django Suit
+            score += 30
+        if "/admin/" in html:
+            score += 20
+        if "djdt" in html:  # Django Debug Toolbar
+            score += 15
+        if "field-" in html and "th.field" in html:
+            score += 20
+        
+        return min(score, 100)
     
     @classmethod
     def get_item_selector_hints(cls) -> list[str]:
@@ -496,15 +577,23 @@ class NextJSProfile(FrameworkProfile):
     name = "nextjs"
     
     @classmethod
-    def detect(cls, html: str, item_element: Tag | None = None) -> bool:
+    def detect(cls, html: str, item_element: Tag | None = None) -> int:
         """Detect Next.js by looking for __NEXT_DATA__ and Next.js-specific attributes."""
-        nextjs_indicators = [
-            "__NEXT_DATA__",
-            "__next",
-            "data-nextjs",
-            "/_next/",
-        ]
-        return any(indicator in html for indicator in nextjs_indicators)
+        score = 0
+        
+        # Next.js indicators
+        if "__NEXT_DATA__" in html:
+            score += 50
+        if "__next" in html:
+            score += 30
+        if "data-nextjs" in html:
+            score += 25
+        if "/_next/" in html:
+            score += 20
+        if "next/script" in html or "next/image" in html:
+            score += 15
+        
+        return min(score, 100)
     
     @classmethod
     def get_item_selector_hints(cls) -> list[str]:
@@ -553,20 +642,25 @@ class ReactComponentProfile(FrameworkProfile):
     name = "react"
     
     @classmethod
-    def detect(cls, html: str, item_element: Tag | None = None) -> bool:
+    def detect(cls, html: str, item_element: Tag | None = None) -> int:
         """Detect React by looking for data-react attributes and root div."""
-        react_indicators = [
-            "data-reactroot",
-            "data-react-",
-            "__REACT",
-        ]
-        # Only match id="root" or id="app" if data-react* is also present
-        if any(indicator in html for indicator in react_indicators):
-            return True
-        # Be more specific - don't match generic id="app" unless React-specific markers exist
-        if 'id="root"' in html and ("data-react" in html or "React" in html):
-            return True
-        return False
+        score = 0
+        
+        # React-specific indicators
+        if "data-reactroot" in html:
+            score += 40
+        if "data-react-" in html:
+            score += 35
+        if "__REACT" in html:
+            score += 30
+        if 'id="root"' in html:
+            score += 20
+        if 'id="app"' in html and ("data-react" in html or "React" in html):
+            score += 15
+        if "react-dom" in html or "react.js" in html:
+            score += 25
+        
+        return min(score, 100)
     
     @classmethod
     def get_item_selector_hints(cls) -> list[str]:
@@ -618,17 +712,25 @@ class VueJSProfile(FrameworkProfile):
     name = "vuejs"
     
     @classmethod
-    def detect(cls, html: str, item_element: Tag | None = None) -> bool:
+    def detect(cls, html: str, item_element: Tag | None = None) -> int:
         """Detect Vue.js by looking for v- directives and Vue-specific attributes."""
-        vue_indicators = [
-            "v-for=",
-            "v-if=",
-            "v-bind:",
-            ":key=",
-            "@click=",
-            "__VUE__",
-        ]
-        return any(indicator in html for indicator in vue_indicators)
+        score = 0
+        
+        # Vue.js indicators
+        if "v-for=" in html:
+            score += 45  # Increased from 35
+        if "v-if=" in html:
+            score += 30  # Increased from 25
+        if "v-bind:" in html or ":key=" in html:
+            score += 25
+        if "@click=" in html or "v-on:" in html:
+            score += 20
+        if "__VUE__" in html:
+            score += 30
+        if "vue.js" in html.lower() or "vue@" in html:
+            score += 25
+        
+        return min(score, 100)
     
     @classmethod
     def get_item_selector_hints(cls) -> list[str]:
@@ -682,20 +784,50 @@ FRAMEWORK_PROFILES: list[type[FrameworkProfile]] = [
 
 def detect_framework(html: str, item_element: Tag | None = None) -> type[FrameworkProfile] | None:
     """
-    Detect which framework is being used.
+    Detect which framework is being used (returns best match above threshold).
     
     Args:
         html: Full page HTML
         item_element: Optional item container element
     
     Returns:
-        Detected framework profile class or None
+        Detected framework profile class or None if no match above threshold (40)
     """
-    for profile_class in FRAMEWORK_PROFILES:
-        if profile_class.detect(html, item_element):
-            return profile_class
+    best_score = 0
+    best_profile = None
     
-    return None
+    for profile_class in FRAMEWORK_PROFILES:
+        score = profile_class.detect(html, item_element)
+        if score > best_score:
+            best_score = score
+            best_profile = profile_class
+    
+    # Return best match if above threshold (lowered to 40 for better detection)
+    return best_profile if best_score >= 40 else None
+
+
+def detect_all_frameworks(html: str, item_element: Tag | None = None) -> list[tuple[type[FrameworkProfile], int]]:
+    """
+    Detect all frameworks with their confidence scores.
+    
+    Args:
+        html: Full page HTML
+        item_element: Optional item container element
+    
+    Returns:
+        List of (profile_class, score) tuples sorted by score (highest first).
+        Only includes profiles with score > 0.
+    """
+    results = []
+    
+    for profile_class in FRAMEWORK_PROFILES:
+        score = profile_class.detect(html, item_element)
+        if score > 0:
+            results.append((profile_class, score))
+    
+    # Sort by score descending
+    results.sort(key=lambda x: x[1], reverse=True)
+    return results
 
 
 def get_framework_field_selector(
