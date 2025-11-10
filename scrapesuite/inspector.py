@@ -5,7 +5,7 @@ from typing import Any
 
 from bs4 import BeautifulSoup, Tag
 
-from .framework_profiles import detect_framework, get_framework_field_selector, is_framework_pattern
+from .framework_profiles import detect_framework, get_framework_field_selector, is_framework_pattern, _get_element_classes
 from .selector_builder import build_robust_selector
 
 
@@ -31,17 +31,18 @@ def inspect_html(html: str) -> dict[str, Any]:
     soup = BeautifulSoup(html, "html.parser")
     
     # Find repeated element patterns
-    tag_counter = Counter()
-    class_counter = Counter()
+    tag_counter: Counter[str] = Counter()
+    class_counter: Counter[str] = Counter()
     
     for tag in soup.find_all(True):  # All tags
         # Count tags
         tag_counter[tag.name] += 1
         
         # Count classes
-        classes = tag.get("class", [])
-        for cls in classes:
-            class_counter[cls] += 1
+        classes_str = _get_element_classes(tag)
+        for cls in classes_str.split():
+            if cls:  # Skip empty strings
+                class_counter[cls] += 1
     
     # Find container candidates (divs/sections with repeated children)
     containers = []
@@ -54,7 +55,7 @@ def inspect_html(html: str) -> dict[str, Any]:
                 if len(set(child_tags)) == 1:  # All same tag
                     containers.append({
                         "tag": container.name,
-                        "class": " ".join(container.get("class", [])),
+                        "class": _get_element_classes(container),
                         "id": container.get("id"),
                         "child_count": len(children),
                         "child_tag": child_tags[0],
@@ -80,7 +81,7 @@ def inspect_html(html: str) -> dict[str, Any]:
         links.append({
             "href": a.get("href"),
             "text": a.get_text(strip=True),
-            "class": " ".join(a.get("class", [])),
+            "class": _get_element_classes(a),
         })
     
     # Page metadata
@@ -91,7 +92,7 @@ def inspect_html(html: str) -> dict[str, Any]:
         "title": title.get_text(strip=True) if title else "",
         "description": meta_desc.get("content", "") if meta_desc else "",
         "total_links": len(links),
-        "containers": sorted(containers, key=lambda x: x["child_count"], reverse=True)[:5],
+        "containers": sorted(containers, key=lambda x: int(x["child_count"]), reverse=True)[:5],
         "repeated_classes": repeated_classes[:10],
         "sample_links": links[:10],
     }

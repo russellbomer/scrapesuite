@@ -39,9 +39,11 @@ def set_rate_limiter(limiter: DomainRateLimiter) -> None:
 
 def get_rate_limiter() -> DomainRateLimiter:
     """Get or create global rate limiter with default settings."""
-    if _RATE_LIMITER_CONTAINER["instance"] is None:
-        _RATE_LIMITER_CONTAINER["instance"] = DomainRateLimiter(default_rps=1.0)
-    return _RATE_LIMITER_CONTAINER["instance"]
+    limiter = _RATE_LIMITER_CONTAINER["instance"]
+    if limiter is None:
+        limiter = DomainRateLimiter(default_rps=1.0)
+        _RATE_LIMITER_CONTAINER["instance"] = limiter
+    return limiter
 
 
 def _check_robots_txt(url: str, user_agent: str) -> bool:
@@ -69,10 +71,11 @@ def _check_robots_txt(url: str, user_agent: str) -> bool:
         _ROBOTS_CACHE[domain] = rp
     
     # If cache has None, robots.txt fetch failed previously
-    if _ROBOTS_CACHE[domain] is None:
+    robot_parser = _ROBOTS_CACHE[domain]
+    if robot_parser is None:
         return True
     
-    return _ROBOTS_CACHE[domain].can_fetch(user_agent, url)
+    return robot_parser.can_fetch(user_agent, url)
 
 
 def _build_browser_headers(url: str, user_agent: str | None = None, referrer: str | None = None) -> dict[str, str]:
