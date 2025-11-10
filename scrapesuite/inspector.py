@@ -5,7 +5,7 @@ from typing import Any
 
 from bs4 import BeautifulSoup, Tag
 
-from .framework_profiles import detect_framework, get_framework_field_selector
+from .framework_profiles import detect_framework, get_framework_field_selector, is_framework_pattern
 from .selector_builder import build_robust_selector
 
 
@@ -113,7 +113,64 @@ def find_item_selector(html: str, min_items: int = 3) -> list[dict[str, Any]]:  
         # Might be a fragment, try to parse anyway
         pass
     
+    # Detect framework first to prioritize framework-specific patterns
+    detected_framework = detect_framework(html)
+    
     candidates = []
+    
+    # Add framework-specific container hints as high-priority candidates
+    if detected_framework:
+        for hint_selector in detected_framework.get_item_selector_hints():
+            hint_elements = soup.select(hint_selector)
+            if len(hint_elements) >= min_items:
+                first = hint_elements[0]
+                
+                # Extract sample title
+                sample_title = ""
+                title_elem = first.find(["h1", "h2", "h3", "h4"])
+                if title_elem:
+                    sample_title = title_elem.get_text(strip=True)[:80]
+                
+                if not sample_title:
+                    link_elem = first.find("a", href=True)
+                    if link_elem:
+                        sample_title = link_elem.get_text(strip=True)[:80]
+                
+                if not sample_title:
+                    sample_title = first.get_text(strip=True)[:80] or f"Framework hint: {hint_selector}"
+                
+                # Get multiple samples
+                sample_texts = []
+                for elem in hint_elements[:3]:
+                    elem_text = ""
+                    heading = elem.find(["h1", "h2", "h3", "h4"])
+                    if heading:
+                        elem_text = heading.get_text(strip=True)[:50]
+                    if not elem_text:
+                        elem_link = elem.find("a", href=True)
+                        if elem_link:
+                            elem_text = elem_link.get_text(strip=True)[:50]
+                    if not elem_text:
+                        elem_text = elem.get_text(strip=True)[:50]
+                    
+                    if elem_text:
+                        sample_texts.append(elem_text)
+                
+                # Deduplicate and join
+                unique_samples = list(dict.fromkeys(sample_texts))
+                if len(unique_samples) > 1:
+                    sample_title = " | ".join(unique_samples)
+                elif unique_samples:
+                    sample_title = unique_samples[0]
+                
+                candidates.append({
+                    "selector": hint_selector,
+                    "count": len(hint_elements),
+                    "sample_title": sample_title,
+                    "sample_url": first.find("a", href=True).get("href", "") if first.find("a", href=True) else "",
+                    "confidence": "very_high",  # Framework hints are very high confidence
+                    "framework_match": True,
+                })
     
     # Strategy 0a: Table rows (very common for data listings)
     # Check for <tr> elements in tables - often used for tabular data like FDA recalls
@@ -696,9 +753,15 @@ def find_item_selector(html: str, min_items: int = 3) -> list[dict[str, Any]]:  
             seen_selectors.add(candidate["selector"])
             unique_candidates.append(candidate)
     
-    # Sort by confidence first (high > medium > low), then by count
+    # Sort by confidence first (very_high > high > medium > low), then by count
     def sort_key(candidate):
-        confidence_score = {"high": 3, "medium": 2, "low": 1}.get(candidate["confidence"], 0)
+        confidence_score = {
+            "very_high": 4, 
+            "high": 3, 
+            "medium": 2, 
+            "low": 1
+        }.get(candidate.get("confidence", "low"), 0)
+        
         count = candidate["count"]
         
         # Penalize very high counts (likely navigation/chrome elements)
@@ -716,7 +779,14 @@ def find_item_selector(html: str, min_items: int = 3) -> list[dict[str, Any]]:  
         )
         title_boost = 100 if has_meaningful_title else 0
         
-        return (confidence_score, title_boost, count_score)
+        # Boost framework-matching patterns
+        framework_boost = 0
+        if detected_framework:
+            selector = candidate["selector"]
+            if is_framework_pattern(selector, detected_framework):
+                framework_boost = 500  # Strong boost for framework matches
+        
+        return (confidence_score, framework_boost, title_boost, count_score)
     
     sorted_candidates = sorted(unique_candidates, key=sort_key, reverse=True)
     

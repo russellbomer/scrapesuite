@@ -432,3 +432,34 @@ def get_framework_field_selector(
         CSS selector string or None
     """
     return framework.generate_field_selector(item_element, field_type)
+
+
+def is_framework_pattern(selector: str, framework: type[FrameworkProfile] | None) -> bool:
+    """
+    Check if a selector matches known framework patterns.
+    
+    Args:
+        selector: CSS selector to check
+        framework: Detected framework profile class or None
+    
+    Returns:
+        True if selector matches framework patterns
+    """
+    if not framework:
+        return False
+    
+    # Check if selector matches any container pattern
+    for pattern in framework.get_item_selector_hints():
+        if pattern in selector or selector in pattern:
+            return True
+    
+    # Check if selector matches any field mapping pattern
+    for field_patterns in framework.get_field_mappings().values():
+        for pattern in field_patterns:
+            # Remove ::attr() suffix for comparison
+            base_pattern = pattern.split("::attr(")[0] if "::attr(" in pattern else pattern
+            if base_pattern in selector or selector in base_pattern:
+                return True
+    
+    return False
+
