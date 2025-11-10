@@ -133,7 +133,7 @@ def get_html(
     url: str,
     *,
     ua: str | None = None,
-    timeout: int = 15,
+    timeout: int = 30,
     max_retries: int = 3,
     respect_robots: bool = True,
     session: requests.Session | None = None,
@@ -237,7 +237,13 @@ def get_html(
                 raise
             
             # Backoff for other errors (timeout, connection, etc.)
+            # For timeout errors, increase wait time more aggressively
             base_backoff = 0.5 * (2**attempt)
+            
+            # Timeout errors need longer retry delays
+            if isinstance(e, (requests.Timeout, requests.ConnectTimeout, requests.ReadTimeout)):
+                base_backoff *= 2  # Double the wait for timeout errors
+            
             jitter = random.uniform(0, 0.1 * base_backoff)
             time.sleep(base_backoff + jitter)
 

@@ -277,6 +277,55 @@ def _collect_max_items() -> int:
         return DEFAULT_MAX_ITEMS
 
 
+def _get_pasted_html() -> str | None:
+    """
+    Collect HTML pasted by user from browser.
+    
+    Returns HTML string or None if cancelled/empty.
+    """
+    if console:
+        console.print("\n[cyan]Copy HTML from your browser:[/cyan]")
+        console.print("1. Open the URL in your browser")
+        console.print("2. Right-click → 'Inspect' or press F12")
+        console.print("3. Right-click on <html> or <body> in Elements panel")
+        console.print("4. Select 'Copy → Copy outerHTML'")
+        console.print("5. Paste below (press Ctrl+D or type 'END' on a new line when done)\n")
+    else:
+        print("\nCopy HTML from your browser:")
+        print("1. Open the URL in your browser")
+        print("2. Right-click → 'Inspect' or press F12")
+        print("3. Right-click on <html> or <body> in Elements panel")
+        print("4. Select 'Copy → Copy outerHTML'")
+        print("5. Paste below (press Ctrl+D or type 'END' on a new line when done)\n")
+    
+    # Collect multi-line HTML input
+    html_lines = []
+    print("Paste HTML here:")
+    try:
+        while True:
+            line = input()
+            if line.strip() == "END":
+                break
+            html_lines.append(line)
+    except EOFError:
+        pass  # Ctrl+D pressed
+    
+    pasted_html = "\n".join(html_lines)
+    
+    if pasted_html.strip():
+        if console:
+            console.print(f"[green]✓ Received {len(pasted_html)} characters of HTML[/green]")
+        else:
+            print(f"✓ Received {len(pasted_html)} characters of HTML")
+        return pasted_html
+    else:
+        if console:
+            console.print("[yellow]No HTML provided.[/yellow]")
+        else:
+            print("No HTML provided.")
+        return None
+
+
 def _analyze_html_and_build_selectors(entry_url: str) -> dict[str, Any] | None:  # noqa: PLR0912, PLR0915
     """
     Fetch URL, analyze HTML, and interactively build selectors.
@@ -288,10 +337,83 @@ def _analyze_html_and_build_selectors(entry_url: str) -> dict[str, Any] | None: 
     else:
         print("\nAnalyzing HTML structure...")
     
+    html = None
+    
     try:
         # Fetch HTML
         html = get_html(entry_url)
+    except Exception as fetch_error:
+        # Handle fetch errors and offer to paste HTML
+        error_msg = f"Failed to fetch URL: {fetch_error}"
         
+        # Provide helpful context for common errors
+        if "robots.txt disallows" in str(fetch_error):
+            help_msg = (
+                "\n\n💡 This URL is blocked by robots.txt. "
+                "The site owner has explicitly disallowed scraping this page.\n"
+                "\nOptions:\n"
+                "  1. Check robots.txt manually: [domain]/robots.txt\n"
+                "  2. Try a different page on the same site\n"
+                "  3. Contact the site owner for permission\n"
+                "  4. Look for an official API instead\n"
+                "\nYou can continue the wizard with respect_robots=False (not recommended for production)."
+            )
+            error_msg += help_msg
+        elif "403" in str(fetch_error) or "Forbidden" in str(fetch_error):
+            help_msg = (
+                "\n\n💡 This website is blocking automated requests. "
+                "This often happens with sites using:\n"
+                "  • Cloudflare, Akamai, or other bot protection\n"
+                "  • Anti-scraping measures\n"
+                "\nOptions:\n"
+                "  1. Try a slower rate limit (default is already 1 req/sec)\n"
+                "  2. Check if the site has robots.txt restrictions\n"
+                "  3. Use browser developer tools to inspect the HTML manually\n"
+                "  4. Check if the site has an API available\n"
+                "  5. Contact the site owner for permission\n"
+                "\nYou can continue the wizard without HTML analysis and write selectors manually."
+            )
+            error_msg += help_msg
+        elif "404" in str(fetch_error) or "Not Found" in str(fetch_error):
+            error_msg += "\n\n💡 The URL returned 404. Please check the URL is correct."
+        elif "timeout" in str(fetch_error).lower() or "timed out" in str(fetch_error).lower():
+            error_msg += (
+                "\n\n💡 Request timed out. The server is not responding.\n"
+                "\nPossible causes:\n"
+                "  • Server is slow or temporarily unavailable\n"
+                "  • Server is blocking datacenter IPs (common for government sites)\n"
+                "  • Firewall or bot protection is rejecting the request\n"
+                "\nOptions:\n"
+                "  1. Try from a different network (local machine vs cloud)\n"
+                "  2. Check if the site loads in your browser from this network\n"
+                "  3. Use browser dev tools to copy HTML manually\n"
+                "  4. Continue wizard and paste HTML when prompted\n"
+                "\nYou can continue without HTML analysis and write selectors manually."
+            )
+        elif "connection" in str(fetch_error).lower() or "network" in str(fetch_error).lower():
+            error_msg += "\n\n💡 Network connection failed. Check your internet connection and verify the domain is accessible."
+        elif "ssl" in str(fetch_error).lower() or "certificate" in str(fetch_error).lower():
+            error_msg += "\n\n💡 SSL/TLS certificate error. The site may have an invalid or expired certificate."
+        elif "429" in str(fetch_error) or "Too Many Requests" in str(fetch_error):
+            error_msg += "\n\n💡 Rate limited by the server. The site is asking us to slow down. This is unusual for a single request."
+        
+        if console:
+            console.print(f"[red]{error_msg}[/red]")
+        else:
+            print(f"ERROR: {error_msg}")
+        
+        # Offer option to paste HTML manually
+        if _prompt_confirm("\nDo you want to paste HTML from your browser instead?", default=True):
+            html = _get_pasted_html()
+            if not html:
+                return None
+        else:
+            return None
+    
+    if not html:
+        return None
+    
+    try:
         # Inspect HTML structure
         analysis = inspect_html(html)
         
@@ -521,50 +643,10 @@ def _analyze_html_and_build_selectors(entry_url: str) -> dict[str, Any] | None: 
                 "item": item_selector,
                 "fields": field_selectors,
             }
-
     
     except Exception as e:
+        # Catch any analysis errors that occur after successful fetch
         error_msg = f"HTML analysis failed: {e}"
-        
-        # Provide helpful context for common errors
-        if "robots.txt disallows" in str(e):
-            help_msg = (
-                "\n\n💡 This URL is blocked by robots.txt. "
-                "The site owner has explicitly disallowed scraping this page.\n"
-                "\nOptions:\n"
-                "  1. Check robots.txt manually: [domain]/robots.txt\n"
-                "  2. Try a different page on the same site\n"
-                "  3. Contact the site owner for permission\n"
-                "  4. Look for an official API instead\n"
-                "\nYou can continue the wizard with respect_robots=False (not recommended for production)."
-            )
-            error_msg += help_msg
-        elif "403" in str(e) or "Forbidden" in str(e):
-            help_msg = (
-                "\n\n💡 This website is blocking automated requests. "
-                "This often happens with sites using:\n"
-                "  • Cloudflare, Akamai, or other bot protection\n"
-                "  • Anti-scraping measures\n"
-                "\nOptions:\n"
-                "  1. Try a slower rate limit (default is already 1 req/sec)\n"
-                "  2. Check if the site has robots.txt restrictions\n"
-                "  3. Use browser developer tools to inspect the HTML manually\n"
-                "  4. Check if the site has an API available\n"
-                "  5. Contact the site owner for permission\n"
-                "\nYou can continue the wizard without HTML analysis and write selectors manually."
-            )
-            error_msg += help_msg
-        elif "404" in str(e) or "Not Found" in str(e):
-            error_msg += "\n\n💡 The URL returned 404. Please check the URL is correct."
-        elif "timeout" in str(e).lower() or "timed out" in str(e).lower():
-            error_msg += "\n\n💡 Request timed out. The site may be slow or temporarily unavailable. Try again or increase timeout."
-        elif "connection" in str(e).lower() or "network" in str(e).lower():
-            error_msg += "\n\n💡 Network connection failed. Check your internet connection and verify the domain is accessible."
-        elif "ssl" in str(e).lower() or "certificate" in str(e).lower():
-            error_msg += "\n\n💡 SSL/TLS certificate error. The site may have an invalid or expired certificate."
-        elif "429" in str(e) or "Too Many Requests" in str(e):
-            error_msg += "\n\n💡 Rate limited by the server. The site is asking us to slow down. This is unusual for a single request."
-        
         if console:
             console.print(f"[red]{error_msg}[/red]")
         else:
