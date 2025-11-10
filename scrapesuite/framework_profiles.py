@@ -60,24 +60,54 @@ class FrameworkProfile:
         patterns = mappings.get(field_type, [])
         
         for pattern in patterns:
+            # Handle ::attr() syntax for attribute extraction
+            has_attr = "::attr(" in pattern
+            if has_attr:
+                # Split pattern and attr
+                base_pattern = pattern.split("::attr(")[0].strip()
+                # attr_name = pattern.split("::attr(")[1].rstrip(")")
+            else:
+                base_pattern = pattern
+            
             # Try to find element matching pattern
-            if pattern.startswith("."):
+            if base_pattern.startswith("."):
                 # Class selector
-                elem = item_element.find(class_=pattern[1:])
-            elif pattern.startswith("["):
+                class_name = base_pattern[1:].split()[0]  # Get first class if pattern has spaces
+                
+                # Handle patterns like ".class a" (selector with descendant)
+                if " " in base_pattern:
+                    # Split into parent and child
+                    parent_class = base_pattern.split()[0][1:]  # Remove leading dot
+                    child_selector = " ".join(base_pattern.split()[1:])
+                    
+                    # Find parent element
+                    parent = item_element.find(class_=parent_class)
+                    if parent:
+                        # Check if child exists
+                        if child_selector == "a":
+                            if parent.find("a", href=True):
+                                return pattern  # Return original with ::attr if present
+                        elif child_selector.startswith("img"):
+                            if parent.find("img"):
+                                return pattern
+                else:
+                    # Simple class selector
+                    elem = item_element.find(class_=class_name)
+                    if elem:
+                        return pattern
+            elif base_pattern.startswith("["):
                 # Attribute selector - parse it
                 # Simple implementation for common cases
-                if "=" in pattern:
-                    attr_name = pattern.split("=")[0].replace("[", "").strip()
+                if "=" in base_pattern:
+                    attr_name = base_pattern.split("=")[0].replace("[", "").strip()
                     elem = item_element.find(attrs={attr_name: True})
-                else:
-                    continue
+                    if elem:
+                        return pattern
             else:
                 # Tag selector
-                elem = item_element.find(pattern)
-            
-            if elem:
-                return pattern
+                elem = item_element.find(base_pattern)
+                if elem:
+                    return pattern
         
         return None
 
@@ -115,31 +145,34 @@ class DrupalViewsProfile(FrameworkProfile):
         """Common Drupal Views field classes."""
         return {
             "title": [
+                ".views-field-field-product-description",
                 ".views-field-title",
                 ".views-field-name",
                 ".views-field-field-title",
-                ".views-field-field-product-description",
                 ".field-content",
             ],
             "url": [
-                ".views-field-title a",
-                ".views-field-name a",
-                ".views-field-path a",
+                ".views-field-field-product-description a::attr(href)",
+                ".views-field-title a::attr(href)",
+                ".views-field-name a::attr(href)",
+                ".views-field-path a::attr(href)",
             ],
             "date": [
+                ".views-field-field-date",
                 ".views-field-created",
                 ".views-field-changed",
-                ".views-field-field-date",
                 ".views-field-post-date",
             ],
             "author": [
+                ".views-field-company-name",
+                ".views-field-brand-name",
                 ".views-field-name",  # User name field
                 ".views-field-uid",
                 ".views-field-author",
                 ".views-field-field-author",
-                ".views-field-company-name",
             ],
             "body": [
+                ".views-field-field-recall-reason-description",
                 ".views-field-body",
                 ".views-field-field-body",
                 ".views-field-description",

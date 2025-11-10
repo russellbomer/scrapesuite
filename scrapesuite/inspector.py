@@ -118,8 +118,29 @@ def find_item_selector(html: str, min_items: int = 3) -> list[dict[str, Any]]:  
     # Strategy 0a: Table rows (very common for data listings)
     # Check for <tr> elements in tables - often used for tabular data like FDA recalls
     table_rows = soup.find_all("tr")
-    # Filter out header rows
-    data_rows = [tr for tr in table_rows if tr.find_parent("tbody") or not tr.find("th")]
+    # Filter out header rows (those with <th> or containing header-like text)
+    data_rows = []
+    for tr in table_rows:
+        # Skip if in thead
+        if tr.find_parent("thead"):
+            continue
+        # Skip if contains th elements
+        if tr.find("th"):
+            continue
+        # Skip if not in tbody and is first row in table (likely header)
+        if not tr.find_parent("tbody"):
+            table = tr.find_parent("table")
+            if table and table.find("tr") == tr:
+                continue
+        # Skip rows with header-like text patterns
+        row_text = tr.get_text(strip=True).lower()
+        if any(header in row_text for header in ["date", "title", "author", "company name"]) and len(row_text) < 100:
+            # Might be a header, check if all cells are short text (typical for headers)
+            cells = tr.find_all(["td", "th"])
+            if cells and all(len(cell.get_text(strip=True)) < 30 for cell in cells):
+                continue
+        
+        data_rows.append(tr)
     
     if len(data_rows) >= min_items:
         # This is likely a data table
