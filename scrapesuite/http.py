@@ -1,6 +1,8 @@
 """Polite HTTP client with retry, backoff, and per-domain rate limiting."""
 
+import os
 import random
+import sys
 import time
 from urllib.parse import urlparse
 from urllib.robotparser import RobotFileParser
@@ -76,6 +78,38 @@ def _check_robots_txt(url: str, user_agent: str) -> bool:
         return True
     
     return robot_parser.can_fetch(user_agent, url)
+
+
+def _prompt_robots_override(url: str, domain: str) -> bool:
+    """
+    Interactively prompt user to override robots.txt block.
+    
+    Only called when SCRAPESUITE_INTERACTIVE=1 environment variable is set.
+    
+    Args:
+        url: The blocked URL
+        domain: The domain that's blocking
+    
+    Returns:
+        True if user wants to proceed anyway, False to respect robots.txt
+    """
+    print(f"\n⚠️  robots.txt Policy Block", file=sys.stderr)
+    print(f"   Domain: {domain}", file=sys.stderr)
+    print(f"   URL: {url}", file=sys.stderr)
+    print(f"\n   This site's robots.txt disallows automated access.", file=sys.stderr)
+    print(f"   Ethical scraping respects this policy.", file=sys.stderr)
+    
+    # Flush stderr to ensure prompt appears before input
+    sys.stderr.flush()
+    
+    try:
+        response = input("\n   Proceed anyway? (y/N): ").strip().lower()
+        return response in ("y", "yes")
+    except (EOFError, KeyboardInterrupt):
+        # Handle Ctrl+C or EOF gracefully
+        print("\n   Cancelled. Respecting robots.txt.", file=sys.stderr)
+        return False
+
 
 
 def _build_browser_headers(url: str, user_agent: str | None = None, referrer: str | None = None) -> dict[str, str]:
@@ -170,15 +204,26 @@ def get_html(
         check_ua = ua or "ScrapeSuite/1.0 (+https://github.com/russellbomer/scrapesuite)"
         if not _check_robots_txt(url, check_ua):
             domain = urlparse(url).netloc
-            raise PermissionError(
-                f"robots.txt disallows fetching: {url}\n\n"
-                f"This site ({domain}) blocks automated access. Options:\n"
-                f"  1. For testing/debugging only: get_html(url, respect_robots=False)\n"
-                f"  2. Fetch HTML manually and save to a file for testing\n"
-                f"  3. Use a bot-friendly alternative site (see docs/USER_TESTING_PLAN.md)\n"
-                f"  4. Set SCRAPESUITE_INTERACTIVE=1 to be prompted on blocks\n\n"
-                f"Note: Respecting robots.txt is the ethical default and required for production use."
-            )
+            
+            # Interactive mode: prompt user for override
+            if os.environ.get("SCRAPESUITE_INTERACTIVE") == "1":
+                if _prompt_robots_override(url, domain):
+                    # User chose to proceed anyway - continue to fetching
+                    pass
+                else:
+                    # User chose to respect robots.txt
+                    raise PermissionError(f"robots.txt blocks {url} - user chose to respect policy")
+            else:
+                # Non-interactive mode: raise error with helpful message
+                raise PermissionError(
+                    f"robots.txt disallows fetching: {url}\n\n"
+                    f"This site ({domain}) blocks automated access. Options:\n"
+                    f"  1. For testing/debugging only: get_html(url, respect_robots=False)\n"
+                    f"  2. Fetch HTML manually and save to a file for testing\n"
+                    f"  3. Use a bot-friendly alternative site (see docs/USER_TESTING_PLAN.md)\n"
+                    f"  4. Set SCRAPESUITE_INTERACTIVE=1 to be prompted on blocks\n\n"
+                    f"Note: Respecting robots.txt is the ethical default and required for production use."
+                )
     
     # Build realistic browser headers
     headers = _build_browser_headers(url, user_agent=ua)
