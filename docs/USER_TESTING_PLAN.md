@@ -66,7 +66,7 @@ from scrapesuite.http import get_html
 from scrapesuite.framework_profiles import detect_framework, detect_all_frameworks
 
 url = 'https://www.allrecipes.com/recipe/10813/best-chocolate-chip-cookies/'
-html = get_html(url, offline=False)
+html = get_html(url)
 
 # Single detection
 framework = detect_framework(html)
@@ -107,7 +107,7 @@ from scrapesuite.framework_profiles import SchemaOrgProfile, detect_framework
 from bs4 import BeautifulSoup
 
 url = 'https://techcrunch.com/2024/01/15/example-article/'  # Use actual URL
-html = get_html(url, offline=False)
+html = get_html(url)
 
 # Detect
 framework = detect_framework(html)
@@ -158,7 +158,7 @@ from scrapesuite.http import get_html
 from scrapesuite.framework_profiles import detect_all_frameworks
 
 url = 'https://www.amazon.com/dp/B08N5WRWNW'  # Use actual product URL
-html = get_html(url, offline=False)
+html = get_html(url)
 
 # Get all frameworks
 all_fw = detect_all_frameworks(html)
@@ -208,7 +208,7 @@ from scrapesuite.http import get_html
 from scrapesuite.framework_profiles import OpenGraphProfile, detect_framework
 
 url = 'https://medium.com/@example/example-article'  # Use actual URL
-html = get_html(url, offline=False)
+html = get_html(url)
 
 # Detect
 framework = detect_framework(html)
@@ -252,7 +252,7 @@ from scrapesuite.http import get_html
 from scrapesuite.framework_profiles import detect_all_frameworks, OpenGraphProfile, SchemaOrgProfile
 
 url = 'https://www.nytimes.com/2024/01/15/world/example.html'  # Use actual URL
-html = get_html(url, offline=False)
+html = get_html(url)
 
 # All frameworks
 all_fw = detect_all_frameworks(html)
@@ -301,7 +301,7 @@ from scrapesuite.http import get_html
 from scrapesuite.framework_profiles import TwitterCardsProfile, detect_framework
 
 url = 'https://stackoverflow.com/questions/12345678/example'  # Use actual URL
-html = get_html(url, offline=False)
+html = get_html(url)
 
 # Detect
 framework = detect_framework(html)
@@ -345,7 +345,7 @@ from scrapesuite.http import get_html
 from scrapesuite.framework_profiles import OpenGraphProfile, TwitterCardsProfile, detect_all_frameworks
 
 url = 'https://www.producthunt.com/posts/example-product'  # Use actual URL
-html = get_html(url, offline=False)
+html = get_html(url)
 
 # All frameworks
 all_fw = detect_all_frameworks(html)
@@ -400,7 +400,7 @@ from scrapesuite.http import get_html
 from scrapesuite.framework_profiles import WooCommerceProfile, WordPressProfile, detect_all_frameworks
 
 url = 'https://example-woocommerce-store.com/shop'  # Use actual URL
-html = get_html(url, offline=False)
+html = get_html(url)
 
 # All frameworks
 all_fw = detect_all_frameworks(html)
@@ -450,7 +450,7 @@ from scrapesuite.http import get_html
 from scrapesuite.framework_profiles import WooCommerceProfile, detect_framework
 
 url = 'https://example-store.com/product/example-product/'  # Use actual URL
-html = get_html(url, offline=False)
+html = get_html(url)
 
 # Detect
 framework = detect_framework(html)
@@ -612,9 +612,9 @@ sink:
   path: results/schema-recipes.csv
 EOF
 
-# Run job in offline mode (if you have test data)
-# Or modify to use live mode with rate limiting
-python -m scrapesuite run test-schema-recipes.yml --offline
+# Run job (modify URL to use real site)
+# Note: Remove --offline flag to scrape live sites
+python -m scrapesuite run test-schema-recipes.yml
 
 # Check results
 head -20 results/schema-recipes.csv
@@ -743,7 +743,7 @@ from scrapesuite.http import get_html
 from scrapesuite.framework_profiles import detect_framework, detect_all_frameworks
 
 url = 'http://info.cern.ch/'  # Historic plain HTML site
-html = get_html(url, offline=False)
+html = get_html(url)
 
 framework = detect_framework(html)
 print(f'Detected: {framework.name if framework else \"None (as expected)\"}')
@@ -809,7 +809,7 @@ from scrapesuite.framework_profiles import detect_framework
 
 url = 'https://en.wikipedia.org/wiki/Python_(programming_language)'
 start = time.time()
-html = get_html(url, offline=False)
+html = get_html(url)
 fetch_time = time.time() - start
 
 start = time.time()
@@ -867,7 +867,7 @@ from scrapesuite.framework_profiles import detect_all_frameworks
 
 url = '$url'
 try:
-    html = get_html(url, offline=False)
+    html = get_html(url)
     all_fw = detect_all_frameworks(html)
     
     if all_fw:
@@ -1027,7 +1027,7 @@ python --version && python -m pytest -q
 
 ### Run Single Detection Test
 ```bash
-python -c "from scrapesuite.framework_profiles import detect_framework; from scrapesuite.http import get_html; html = get_html('URL', offline=False); print(detect_framework(html).name if detect_framework(html) else 'None')"
+python -c "from scrapesuite.framework_profiles import detect_framework; from scrapesuite.http import get_html; html = get_html('URL'); print(detect_framework(html).name if detect_framework(html) else 'None')"
 ```
 
 ### Run Performance Profiler
