@@ -59,6 +59,8 @@ def run(
     offline: bool = typer.Option(True, "--offline/--live", help="Offline=fixtures, Live=HTTP"),
     db: str | None = typer.Option(None, "--db", help="SQLite DB path"),
     timezone: str = typer.Option("America/New_York", "--timezone", "-tz", help="Timezone"),
+    ignore_robots: bool = typer.Option(False, "--ignore-robots", help="Bypass robots.txt checks (testing only)"),
+    interactive: bool = typer.Option(False, "--interactive", "-i", help="Prompt when robots.txt blocks access"),
 ) -> None:
     """
     Run a single scraping job from YAML file.
@@ -73,10 +75,19 @@ def run(
         # Run your job live (careful! hits real URLs)
         $ python -m scrapesuite.cli run jobs/my_job.yml --live --max-items 10
 
+        # Interactive mode: prompt when sites block
+        $ python -m scrapesuite.cli run jobs/my_job.yml --live --interactive
+
         # Check what was scraped
         $ python -m scrapesuite.cli state
     """
     try:
+        # Set environment variables for robots.txt handling
+        if ignore_robots:
+            os.environ["SCRAPESUITE_IGNORE_ROBOTS"] = "1"
+        if interactive:
+            os.environ["SCRAPESUITE_INTERACTIVE"] = "1"
+        
         job_dict = load_yaml(job_yaml)
         df, next_cursor = run_job(
             job_dict,
@@ -102,6 +113,10 @@ def run(
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
         sys.exit(1)
+    finally:
+        # Clean up environment variables
+        os.environ.pop("SCRAPESUITE_IGNORE_ROBOTS", None)
+        os.environ.pop("SCRAPESUITE_INTERACTIVE", None)
 
 
 @app.command("run-all")
@@ -110,44 +125,57 @@ def run_all(
     offline: bool = typer.Option(True, "--offline/--live"),
     db: str | None = typer.Option(None, "--db", help="SQLite database path"),
     timezone: str = typer.Option("America/New_York", "--timezone", "-tz"),
+    ignore_robots: bool = typer.Option(False, "--ignore-robots", help="Bypass robots.txt checks (testing only)"),
+    interactive: bool = typer.Option(False, "--interactive", "-i", help="Prompt when robots.txt blocks access"),
 ) -> None:
     """Run all jobs in the jobs/ directory."""
-    jobs_dir = Path("jobs")
-    if not jobs_dir.exists():
-        console.print("[red]jobs/ directory not found[/red]")
-        sys.exit(1)
+    # Set environment variables for robots.txt handling
+    if ignore_robots:
+        os.environ["SCRAPESUITE_IGNORE_ROBOTS"] = "1"
+    if interactive:
+        os.environ["SCRAPESUITE_INTERACTIVE"] = "1"
+    
+    try:
+        jobs_dir = Path("jobs")
+        if not jobs_dir.exists():
+            console.print("[red]jobs/ directory not found[/red]")
+            sys.exit(1)
 
-    yaml_files = sorted(jobs_dir.glob("*.yml"))
-    if not yaml_files:
-        console.print("[yellow]No job YAML files found[/yellow]")
-        return
+        yaml_files = sorted(jobs_dir.glob("*.yml"))
+        if not yaml_files:
+            console.print("[yellow]No job YAML files found[/yellow]")
+            return
 
-    for yaml_file in yaml_files:
-        try:
-            job_dict = load_yaml(str(yaml_file))
-            df, next_cursor = run_job(
-                job_dict,
-                max_items=max_items,
-                offline=offline,
-                db_path=db,
-                timezone=timezone,
-            )
+        for yaml_file in yaml_files:
+            try:
+                job_dict = load_yaml(str(yaml_file))
+                df, next_cursor = run_job(
+                    job_dict,
+                    max_items=max_items,
+                    offline=offline,
+                    db_path=db,
+                    timezone=timezone,
+                )
 
-            conn = open_db(db)
-            cursor_row = conn.execute(
-                "SELECT COUNT(*) as count FROM items WHERE job = ? AND first_seen = last_seen",
-                (job_dict["job"],),
-            ).fetchone()
-            new_count = cursor_row["count"] if cursor_row else 0
-            conn.close()
+                conn = open_db(db)
+                cursor_row = conn.execute(
+                    "SELECT COUNT(*) as count FROM items WHERE job = ? AND first_seen = last_seen",
+                    (job_dict["job"],),
+                ).fetchone()
+                new_count = cursor_row["count"] if cursor_row else 0
+                conn.close()
 
-            summary = (
-                f"{job_dict['job']}: {new_count} new, {len(df)} in batch, next_cursor={next_cursor}"
-            )
-            console.print(f"[green]{summary}[/green]")
-        except Exception as e:
-            console.print(f"[red]Error in {yaml_file}: {e}[/red]")
-            continue
+                summary = (
+                    f"{job_dict['job']}: {new_count} new, {len(df)} in batch, next_cursor={next_cursor}"
+                )
+                console.print(f"[green]{summary}[/green]")
+            except Exception as e:
+                console.print(f"[red]Error in {yaml_file}: {e}[/red]")
+                continue
+    finally:
+        # Clean up environment variables
+        os.environ.pop("SCRAPESUITE_IGNORE_ROBOTS", None)
+        os.environ.pop("SCRAPESUITE_INTERACTIVE", None)
 
 
 @app.command()
@@ -191,6 +219,8 @@ def batch(
     max_items: int = typer.Option(200, "--max-items", "-n"),
     offline: bool = typer.Option(False, "--offline/--live"),
     db: str | None = typer.Option(None, "--db"),
+    ignore_robots: bool = typer.Option(False, "--ignore-robots", help="Bypass robots.txt checks (testing only)"),
+    interactive: bool = typer.Option(False, "--interactive", "-i", help="Prompt when robots.txt blocks access"),
 ) -> None:
     """
     Scrape a list of URLs and write results to JSONL.
@@ -201,6 +231,12 @@ def batch(
     timezone = "America/New_York"
 
     try:
+        # Set environment variables for robots.txt handling
+        if ignore_robots:
+            os.environ["SCRAPESUITE_IGNORE_ROBOTS"] = "1"
+        if interactive:
+            os.environ["SCRAPESUITE_INTERACTIVE"] = "1"
+        
         # Read URLs
         urls_path = Path(urls_file)
         if not urls_path.exists():
@@ -242,6 +278,10 @@ def batch(
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
         sys.exit(1)
+    finally:
+        # Clean up environment variables
+        os.environ.pop("SCRAPESUITE_IGNORE_ROBOTS", None)
+        os.environ.pop("SCRAPESUITE_INTERACTIVE", None)
 
 
 @app.command()

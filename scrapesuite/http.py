@@ -199,8 +199,8 @@ def get_html(
     
     Not used in offline mode or tests.
     """
-    # Check robots.txt if requested
-    if respect_robots:
+    # Check robots.txt if requested (unless --ignore-robots CLI flag set)
+    if respect_robots and os.environ.get("SCRAPESUITE_IGNORE_ROBOTS") != "1":
         check_ua = ua or "ScrapeSuite/1.0 (+https://github.com/russellbomer/scrapesuite)"
         if not _check_robots_txt(url, check_ua):
             domain = urlparse(url).netloc
@@ -224,6 +224,7 @@ def get_html(
                     f"  4. Set SCRAPESUITE_INTERACTIVE=1 to be prompted on blocks\n\n"
                     f"Note: Respecting robots.txt is the ethical default and required for production use."
                 )
+
     
     # Build realistic browser headers
     headers = _build_browser_headers(url, user_agent=ua)
