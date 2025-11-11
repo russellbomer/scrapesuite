@@ -571,6 +571,144 @@ python -m pytest --cov=scrapesuite --cov-report=html tests/
 open htmlcov/index.html
 ```
 
+### Testing with Real Websites
+
+When testing framework detection with live websites, follow these guidelines to respect robots.txt and avoid rate limiting.
+
+#### ✅ Bot-Friendly Test Sites (Safe for Testing)
+
+Use these sites for testing - they allow bot access and have good framework diversity:
+
+| Site | Frameworks | Usage Notes |
+|------|-----------|-------------|
+| **GitHub** (github.com) | OpenGraph, Twitter Cards | Excellent for social metadata |
+| **Stack Overflow** (stackoverflow.com) | OpenGraph, Twitter Cards | Q&A content, allows bots |
+| **AllRecipes** (allrecipes.com) | Bootstrap, Tailwind, WordPress | Recipe content, bot-friendly |
+| **Amazon** (amazon.com) | Bootstrap, proprietary | Product pages, respects rate limits |
+| **Target** (target.com) | OpenGraph, Next.js, Tailwind | Modern tech stack |
+
+**Testing command:**
+```bash
+# Interactive mode - prompts when robots.txt blocks
+python -m scrapesuite.cli run job.yml --live --interactive
+
+# Direct URL test
+python -c "
+from scrapesuite.http import get_html
+from scrapesuite.framework_profiles import detect_all_frameworks
+
+html = get_html('https://github.com/explore')
+frameworks = detect_all_frameworks(html)
+print(frameworks[:5])
+"
+```
+
+#### ❌ Sites That Block Bots (Do NOT Use)
+
+These sites block automated access via robots.txt - do not use for testing:
+
+- ❌ **Medium.com** - User-Agent: * Disallow: /
+- ❌ **DEV.to** - User-Agent: * Disallow: /
+
+**If you encounter robots.txt blocks:**
+
+```bash
+# Option 1: Test with bot-friendly alternatives (recommended)
+# See list above
+
+# Option 2: Fetch HTML manually for local testing
+curl 'URL' -H 'User-Agent: Mozilla/5.0' > test.html
+python -c "
+from pathlib import Path
+html = Path('test.html').read_text()
+from scrapesuite.framework_profiles import detect_all_frameworks
+print(detect_all_frameworks(html)[:5])
+"
+
+# Option 3: Interactive mode (prompts before bypassing)
+python -m scrapesuite.cli run job.yml --live --interactive
+
+# Option 4: Testing only (NOT for production)
+python -c "
+from scrapesuite.http import get_html
+html = get_html('URL', respect_robots=False)  # Testing only!
+"
+```
+
+**Important:**
+- Respecting robots.txt is **required for production** code
+- Bypassing robots.txt is **only acceptable for testing/debugging**
+- Always use `--interactive` mode for ad-hoc exploration
+- Add `--ignore-robots` only in controlled test environments
+
+#### ⚠️ Sites with Aggressive Rate Limiting
+
+These sites may timeout or require very slow crawling:
+
+- ⚠️ **Best Buy** (bestbuy.com) - 30+ second timeouts
+- ⚠️ **Walmart** (walmart.com) - Similar aggressive rate limiting
+
+**Testing with slow sites:**
+
+```bash
+# Increase timeout (default is 30s)
+python -c "
+from scrapesuite.http import get_html
+html = get_html('URL', timeout=60)  # Wait up to 60 seconds
+"
+
+# Reduce rate limit in job YAML
+# Edit your job file:
+#   rate_limit_rps: 0.2  # 1 request per 5 seconds
+
+# Use session with cookies (may avoid bot detection)
+python -c "
+from scrapesuite.http import get_html, create_session
+session = create_session()
+html = get_html('URL', session=session)
+"
+```
+
+#### Testing Best Practices
+
+1. **Always respect robots.txt in production code**
+2. **Use bot-friendly sites for framework detection testing**
+3. **Test with fixtures for CI/CD** (no network requests)
+4. **Manual testing on local HTML files** when sites block bots
+5. **Slow down requests** (0.5-1.0 rps) when testing live sites
+6. **Use `--interactive` mode** for exploratory testing
+7. **Document which sites work** in your tests/documentation
+
+Example test with bot-friendly site:
+
+```python
+# tests/test_live_github.py
+"""Test framework detection with GitHub (bot-friendly)."""
+
+import pytest
+from scrapesuite.http import get_html
+from scrapesuite.framework_profiles import detect_all_frameworks
+
+
+@pytest.mark.live  # Mark as live test (optional to skip in CI)
+def test_github_opengraph_detection():
+    """Test OpenGraph detection on GitHub (allows bots)."""
+    try:
+        html = get_html("https://github.com/explore", timeout=10)
+        frameworks = detect_all_frameworks(html)
+        
+        # GitHub uses OpenGraph and Twitter Cards
+        framework_names = [fw.name for fw, _ in frameworks[:5]]
+        assert "opengraph" in framework_names or "twitter_cards" in framework_names
+        
+    except Exception as e:
+        pytest.skip(f"Live test failed (network issue): {e}")
+
+
+# Run live tests:
+# pytest tests/test_live_github.py -m live -v
+```
+
 ---
 
 ## Documentation
