@@ -9,7 +9,10 @@ Tools:
   ship       Package and export data anywhere
 """
 
+import sys
+
 import click
+from rich.console import Console
 
 from quarry.tools.scout.cli import scout as scout_command
 from quarry.tools.survey.cli import survey as survey_command
@@ -17,10 +20,21 @@ from quarry.tools.excavate.cli import excavate as excavate_command
 from quarry.tools.polish.cli import polish as polish_command
 from quarry.tools.ship.cli import ship as ship_command
 
+BANNER = """
+[cyan]██████╗ ██╗   ██╗ █████╗ ██████╗ ██████╗ ██╗   ██╗[/cyan]
+[cyan]██╔═══██╗██║   ██║██╔══██╗██╔══██╗██╔══██╗╚██╗ ██╔╝[/cyan]
+[bright_cyan]██║   ██║██║   ██║███████║██████╔╝██████╔╝ ╚████╔╝[/bright_cyan] 
+[bright_cyan]██║▄▄ ██║██║   ██║██╔══██║██╔══██╗██╔══██╗  ╚██╔╝[/bright_cyan]  
+[blue]╚██████╔╝╚██████╔╝██║  ██║██║  ██║██║  ██║   ██║[/blue]   
+[blue] ╚══▀▀═╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝[/blue]   
+[dim]           Web Data Extraction Suite v2.0[/dim]
+"""
 
-@click.group()
+
+@click.group(invoke_without_command=True)
+@click.pass_context
 @click.version_option(version="2.0.0", prog_name="quarry")
-def quarry():
+def quarry(ctx):
     """
     Quarry - Web Data Extraction Suite
     
@@ -42,7 +56,10 @@ def quarry():
       quarry polish data.jsonl --dedupe
       quarry ship data.jsonl postgres://localhost/db
     """
-    pass
+    if ctx.invoked_subcommand is None:
+        console = Console()
+        console.print(BANNER)
+        click.echo(ctx.get_help())
 
 
 # Add tool commands
