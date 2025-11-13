@@ -11,7 +11,7 @@ from rich.console import Console
 from rich.table import Table
 
 from scrapesuite.core import load_yaml, run_job
-from scrapesuite.robots import RobotsCache
+from scrapesuite.lib.robots import RobotsCache
 from scrapesuite.state import open_db
 from scrapesuite.wizard import run_wizard
 

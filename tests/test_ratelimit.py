@@ -2,7 +2,7 @@
 
 import time
 
-from scrapesuite.ratelimit import DomainRateLimiter, TokenBucket
+from scrapesuite.lib.ratelimit import DomainRateLimiter, TokenBucket
 
 # Test constants
 DEFAULT_RPS = 2.0

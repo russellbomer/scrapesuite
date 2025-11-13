@@ -1,6 +1,5 @@
 """Main entry point for running scrapesuite as a module."""
 
-import sys
 
 from scrapesuite.wizard import run_wizard
 

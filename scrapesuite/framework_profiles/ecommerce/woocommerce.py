@@ -2,7 +2,7 @@
 
 from bs4 import Tag
 
-from scrapesuite.framework_profiles.base import FrameworkProfile, _get_element_classes
+from scrapesuite.framework_profiles.base import FrameworkProfile
 
 
 class WooCommerceProfile(FrameworkProfile):

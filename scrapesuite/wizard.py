@@ -24,7 +24,7 @@ from pydantic import BaseModel, HttpUrl, field_validator
 
 from scrapesuite.core import run_job
 from scrapesuite.framework_profiles import detect_framework
-from scrapesuite.http import get_html
+from scrapesuite.lib.http import get_html
 from scrapesuite.inspector import (
     find_item_selector,
     generate_field_selector,

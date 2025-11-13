@@ -6,12 +6,12 @@ from typing import Any
 import pandas as pd
 import yaml
 
-from scrapesuite import http
+from scrapesuite.lib import http
 from scrapesuite.connectors import custom as custom_conn
 from scrapesuite.connectors import fda, generic, nws
 from scrapesuite.connectors.base import Connector
-from scrapesuite.policy import is_allowed_domain
-from scrapesuite.ratelimit import DomainRateLimiter
+from scrapesuite.lib.policy import is_allowed_domain
+from scrapesuite.lib.ratelimit import DomainRateLimiter
 from scrapesuite.sinks.base import Sink
 from scrapesuite.sinks.csv import CSVSink
 from scrapesuite.sinks.jsonl import JSONLSink

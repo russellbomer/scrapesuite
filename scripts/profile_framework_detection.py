@@ -32,7 +32,7 @@ def profile_detection(html: str, name: str, iterations: int = 100) -> dict:
     # Time single detection
     start = time.perf_counter()
     for _ in range(iterations):
-        result = detect_framework(html)
+        detect_framework(html)
     end = time.perf_counter()
     
     single_time = (end - start) / iterations * 1000  # ms
@@ -40,7 +40,7 @@ def profile_detection(html: str, name: str, iterations: int = 100) -> dict:
     # Time all frameworks detection
     start = time.perf_counter()
     for _ in range(iterations):
-        results = detect_all_frameworks(html)
+        detect_all_frameworks(html)
     end = time.perf_counter()
     
     all_time = (end - start) / iterations * 1000  # ms

@@ -1,6 +1,5 @@
 """Base class for framework-specific detection profiles."""
 
-from typing import Any
 
 from bs4 import Tag
 

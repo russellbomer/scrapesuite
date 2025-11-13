@@ -8,7 +8,7 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
 from scrapesuite.connectors.base import Raw
-from scrapesuite.http import get_html
+from scrapesuite.lib.http import get_html
 
 
 class FDAConnector:

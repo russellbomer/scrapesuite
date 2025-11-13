@@ -3,7 +3,7 @@
 import pytest
 from bs4 import BeautifulSoup
 
-from scrapesuite.selector_builder import (
+from scrapesuite.lib.selectors import (
     build_robust_selector,
     _looks_dynamic,
     _get_stable_marker,
@@ -136,8 +136,7 @@ class TestSelectorBuilder:
         
         marker1 = _get_stable_marker(lis[0])
         marker2 = _get_stable_marker(lis[1])
-        marker3 = _get_stable_marker(lis[2])
-        
+
         # Should use nth-of-type for li elements
         assert "nth-of-type" in marker1 or marker1 == "li"
         assert marker1 != marker2  # Different markers for different positions

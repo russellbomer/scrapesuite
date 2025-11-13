@@ -6,7 +6,7 @@ from typing import Any
 from bs4 import BeautifulSoup, Tag
 
 from .framework_profiles import detect_framework, get_framework_field_selector, is_framework_pattern, _get_element_classes
-from .selector_builder import build_robust_selector
+from .lib.selectors import build_robust_selector
 
 
 def inspect_html(html: str) -> dict[str, Any]:
@@ -639,7 +639,7 @@ def find_item_selector(html: str, min_items: int = 3) -> list[dict[str, Any]]:  
                         if parent_classes:
                             most_common = parent_classes.most_common(1)[0]
                             selector = most_common[0]
-                            count_in_sample = most_common[1]
+                            most_common[1]
                             
                             # Find all instances of this container
                             tag_name, class_name = selector.split(".", 1)
@@ -699,7 +699,6 @@ def find_item_selector(html: str, min_items: int = 3) -> list[dict[str, Any]]:  
             continue
         
         # Count direct child links (not nested deeply)
-        direct_links = elem.find_all("a", href=True, recursive=False)
         nested_links = elem.find_all("a", href=True)
         
         # Good candidate: has 1-3 links and some text
@@ -1000,7 +999,7 @@ def _generate_field_selector_for_table_row(row_element: Tag, field_type: str) ->
         
         if link_candidates:
             link_candidates.sort(reverse=True, key=lambda x: x[0])
-            best_cell, best_link = link_candidates[0][1], link_candidates[0][2]
+            best_cell = link_candidates[0][1]
             cell_classes = best_cell.get("class", [])
             if cell_classes:
                 return f".{cell_classes[0]} a"

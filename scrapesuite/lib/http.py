@@ -9,7 +9,7 @@ from urllib.robotparser import RobotFileParser
 
 import requests
 
-from scrapesuite.ratelimit import DomainRateLimiter
+from scrapesuite.lib.ratelimit import DomainRateLimiter
 
 # Global rate limiter instance (container to avoid global statement warning)
 _RATE_LIMITER_CONTAINER: dict[str, DomainRateLimiter | None] = {"instance": None}

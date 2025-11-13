@@ -1,14 +1,12 @@
 """Tests for framework confidence scoring system."""
 
 from scrapesuite.framework_profiles import (
-    BootstrapProfile,
     DjangoAdminProfile,
     DrupalViewsProfile,
     NextJSProfile,
     ReactComponentProfile,
     TailwindProfile,
     VueJSProfile,
-    WordPressProfile,
     detect_all_frameworks,
     detect_framework,
 )

@@ -1,7 +1,6 @@
 """Schema.org microdata and JSON-LD profile for structured data extraction."""
 
 import json
-import re
 from typing import Any
 
 from bs4 import BeautifulSoup, Tag
