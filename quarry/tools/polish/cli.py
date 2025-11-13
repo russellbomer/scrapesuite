@@ -273,7 +273,7 @@ def polish(input_file, output, dedupe, dedupe_keys, dedupe_strategy, transform, 
                 
                 # Run ship
                 ctx = click.get_current_context()
-                runner = CliRunner(mix_stderr=False)
+                runner = CliRunner()
                 result = runner.invoke(ship, [output], standalone_mode=False)
                 sys.exit(result.exit_code if result.exit_code else 0)
     

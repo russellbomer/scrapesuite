@@ -213,7 +213,7 @@ def scout(url_or_file, file, output, format, pretty, find_api, batch_mode):
                     json.dump(analysis, f, indent=2)
             
             # Run survey create with the URL and analysis
-            runner = CliRunner(mix_stderr=False)
+            runner = CliRunner()
             survey_args = ["create", "--url", url]
             if analysis_file:
                 survey_args.extend(["--from-probe", analysis_file])

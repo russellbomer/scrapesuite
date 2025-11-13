@@ -133,7 +133,7 @@ def create(from_probe, url, file, output, preview):
             
             # Prepare arguments for excavate
             ctx = click.get_current_context()
-            runner = CliRunner(mix_stderr=False)
+            runner = CliRunner()
             
             # Build excavate arguments
             excavate_args = [str(output)]

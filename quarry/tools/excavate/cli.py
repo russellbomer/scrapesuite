@@ -258,7 +258,7 @@ def excavate(schema_file, url, file, output, max_pages, no_metadata, pretty, bat
                 
                 # Run polish
                 ctx = click.get_current_context()
-                runner = CliRunner(mix_stderr=False)
+                runner = CliRunner()
                 result = runner.invoke(polish, [output], standalone_mode=False)
                 sys.exit(result.exit_code if result.exit_code else 0)
     else:
