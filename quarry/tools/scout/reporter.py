@@ -40,14 +40,14 @@ def format_as_terminal(analysis: dict[str, Any]) -> str:
         # Create output buffer
         from io import StringIO
         output = StringIO()
-        console = Console(file=output, width=120, force_terminal=True)
+        console = Console(file=output, width=100, force_terminal=True)
         
         # Header with elegant spacing
         url = analysis.get("url", "")
         console.print()
-        console.print("╭─────────────────────────────────────────────────────────────╮", style="cyan")
-        console.print("│ [bold cyan]PROBE ANALYSIS[/bold cyan]                                         │", style="cyan")
-        console.print("╰─────────────────────────────────────────────────────────────╯", style="cyan")
+        console.print("╭────────────────────────────────────────────────────╮", style="cyan")
+        console.print("│ [bold cyan]PROBE ANALYSIS[/bold cyan]                            │", style="cyan")
+        console.print("╰────────────────────────────────────────────────────╯", style="cyan")
         
         if url:
             console.print(f"[dim]{url}[/dim]")
@@ -68,7 +68,8 @@ def format_as_terminal(analysis: dict[str, Any]) -> str:
                 title="Page Info",
                 title_align="left",
                 border_style="blue",
-                padding=(0, 1)
+                padding=(0, 1),
+                expand=False
             ))
             console.print()
         
@@ -139,7 +140,8 @@ def format_as_terminal(analysis: dict[str, Any]) -> str:
                 title="Best Container",
                 title_align="left",
                 border_style="green",
-                padding=(0, 1)
+                padding=(0, 1),
+                expand=False
             ))
             console.print()
         
@@ -184,7 +186,8 @@ def format_as_terminal(analysis: dict[str, Any]) -> str:
                 title="Framework Recommendation",
                 title_align="left",
                 border_style="yellow",
-                padding=(0, 1)
+                padding=(0, 1),
+                expand=False
             ))
             console.print()
         
@@ -224,7 +227,8 @@ def format_as_terminal(analysis: dict[str, Any]) -> str:
                 title="Page Statistics",
                 title_align="left",
                 border_style="blue",
-                padding=(0, 1)
+                padding=(0, 1),
+                expand=False
             ))
         
         console.print()
