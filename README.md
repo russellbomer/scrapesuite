@@ -255,9 +255,9 @@ scrapesuite/
 ## 📖 Documentation
 
 ### User Guides
-- **[Foundry Suite Guide](docs/FOUNDRY_COMPLETE.md)** - Complete Foundry toolkit documentation
-- **[Wizard Guide](docs/WIZARD.md)** - Interactive scraper generator
+- **[Foundry Suite](docs/FOUNDRY.md)** - Complete guide to the 5 extraction tools
 - **[Framework Profiles](docs/FRAMEWORK_PROFILES.md)** - Understanding framework detection
+- **[Infinite Scroll API Guide](docs/INFINITE_SCROLL_API_GUIDE.md)** - Finding API endpoints for dynamic sites
 - **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 
 ### Developer Guides
