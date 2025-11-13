@@ -141,13 +141,14 @@ def _find_containers(soup: BeautifulSoup) -> list[dict[str, Any]]:
     def has_meaningful_content(element: Tag) -> bool:
         """Check if child has substantial text content (not just links/buttons)."""
         text = element.get_text(strip=True)
-        # Check for substantial text (more than just a few words)
-        if len(text) < 20:
-            return False
         
-        # Check for presence of headings or paragraphs
+        # Check for presence of headings or paragraphs (strong signal)
         if element.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p']):
             return True
+        
+        # Check for substantial text (more than just a few words)
+        if len(text) < 15:
+            return False
         
         # Check text to link ratio
         links = element.find_all('a')
@@ -320,6 +321,9 @@ def _generate_suggestions(soup: BeautifulSoup, containers: list[dict], framework
     """Generate extraction suggestions based on analysis."""
     suggestions = {}
     
+    # Detect infinite scroll indicators
+    suggestions["infinite_scroll"] = _detect_infinite_scroll(soup)
+    
     # Best container guess
     if containers:
         suggestions["best_container"] = containers[0]
@@ -356,6 +360,84 @@ def _generate_suggestions(soup: BeautifulSoup, containers: list[dict], framework
         suggestions["framework_hint"] = None
     
     return suggestions
+
+
+def _detect_infinite_scroll(soup: BeautifulSoup) -> dict[str, Any]:
+    """
+    Detect if page uses infinite scroll instead of traditional pagination.
+    
+    Returns:
+        Dictionary with detection results and indicators
+    """
+    indicators = {
+        "detected": False,
+        "confidence": 0.0,
+        "signals": [],
+    }
+    
+    score = 0
+    signals = []
+    
+    # Check for common infinite scroll libraries/patterns
+    html_str = str(soup)
+    
+    # JavaScript libraries for infinite scroll
+    if "infinite-scroll" in html_str.lower():
+        score += 30
+        signals.append("infinite-scroll library detected")
+    
+    if "waypoint" in html_str.lower():
+        score += 25
+        signals.append("Waypoints.js (scroll detection library)")
+    
+    if "intersection observer" in html_str.lower() or "intersectionobserver" in html_str.lower():
+        score += 30
+        signals.append("IntersectionObserver API (modern infinite scroll)")
+    
+    # React/Vue infinite scroll components
+    if any(lib in html_str for lib in ["react-infinite", "vue-infinite", "InfiniteScroll"]):
+        score += 35
+        signals.append("React/Vue infinite scroll component")
+    
+    # Check for absence of traditional pagination
+    has_pagination = bool(
+        soup.select("a.next, a[rel='next'], .pagination a, a.page-link, nav[aria-label*='pagination' i]")
+    )
+    
+    if not has_pagination:
+        score += 20
+        signals.append("No traditional pagination links found")
+    
+    # Check for loading indicators (common in infinite scroll)
+    loading_indicators = soup.select(
+        ".loading, .spinner, .loader, [class*='load-more'], [id*='load-more']"
+    )
+    if loading_indicators:
+        score += 15
+        signals.append(f"Loading indicator found: {loading_indicators[0].get('class', [''])[0]}")
+    
+    # Check for scroll event listeners in scripts
+    scripts = soup.find_all("script")
+    for script in scripts:
+        script_text = script.string or ""
+        if any(pattern in script_text.lower() for pattern in ["scroll", "onscroll", "scrolltop"]):
+            score += 10
+            signals.append("Scroll event handlers in JavaScript")
+            break
+    
+    # Data attributes suggesting dynamic loading
+    if soup.select("[data-page], [data-offset], [data-cursor]"):
+        score += 20
+        signals.append("Pagination data attributes (likely API-driven)")
+    
+    # Calculate confidence
+    confidence = min(score / 100.0, 1.0)
+    
+    indicators["detected"] = confidence > 0.3
+    indicators["confidence"] = confidence
+    indicators["signals"] = signals
+    
+    return indicators
 
 
 def _suggest_fields(item: Tag) -> list[dict[str, str]]:

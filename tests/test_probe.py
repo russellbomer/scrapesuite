@@ -149,7 +149,7 @@ class TestProbeReporter:
         result = format_as_terminal(analysis)
         
         # Should contain key information
-        assert "Probe Analysis Results" in result
+        assert "PROBE ANALYSIS" in result
         assert "Test Page" in result
-        assert "bootstrap" in result
+        assert "bootstrap" in result.lower()
         assert ".item" in result

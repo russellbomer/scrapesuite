@@ -33,7 +33,12 @@ from .reporter import format_as_json, format_as_terminal
     default=True,
     help="Pretty-print JSON output (default: pretty)"
 )
-def probe(url_or_file, file, output, format, pretty):
+@click.option(
+    "--find-api",
+    is_flag=True,
+    help="Show guide for finding API endpoints (infinite scroll sites)"
+)
+def probe(url_or_file, file, output, format, pretty, find_api):
     """
     Analyze HTML structure and detect patterns.
     
@@ -50,7 +55,14 @@ def probe(url_or_file, file, output, format, pretty):
       foundry probe https://news.ycombinator.com
       foundry probe --file page.html --format json
       foundry probe https://github.com --output analysis.json
+      foundry probe --find-api  # Guide for infinite scroll sites
     """
+    
+    # Show API finding guide if requested
+    if find_api:
+        from .api_guide import show_api_guide
+        show_api_guide()
+        return
     # Determine source
     if file:
         html_source = Path(file)

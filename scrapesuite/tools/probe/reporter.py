@@ -188,6 +188,30 @@ def format_as_terminal(analysis: dict[str, Any]) -> str:
             ))
             console.print()
         
+        # Infinite scroll detection warning
+        infinite_scroll = suggestions.get("infinite_scroll", {})
+        if infinite_scroll.get("detected"):
+            confidence = infinite_scroll.get("confidence", 0) * 100
+            signals = infinite_scroll.get("signals", [])
+            
+            warning_text = f"[bold yellow]⚠ Infinite Scroll Detected[/bold yellow] ({confidence:.0f}% confidence)\n\n"
+            warning_text += "[dim]This page appears to use infinite scroll. Traditional selectors may not work.[/dim]\n\n"
+            warning_text += "[bold]Detected signals:[/bold]\n"
+            for signal in signals[:5]:
+                warning_text += f"  • {signal}\n"
+            
+            warning_text += "\n[bold cyan]💡 Solution:[/bold cyan] Find the underlying API endpoint\n"
+            warning_text += "[dim]Run:[/dim] [cyan]foundry probe --find-api[/cyan]"
+            
+            console.print(Panel(
+                warning_text,
+                title="Infinite Scroll Warning",
+                title_align="left",
+                border_style="yellow",
+                padding=(0, 1)
+            ))
+            console.print()
+        
         # Statistics
         stats = analysis.get("statistics", {})
         if stats:
