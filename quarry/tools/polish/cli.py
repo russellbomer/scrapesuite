@@ -73,6 +73,20 @@ def polish(input_file, output, dedupe, dedupe_keys, dedupe_strategy, transform, 
       quarry polish data.jsonl --dedupe --skip-invalid --output clean.jsonl
     """
     
+    # Show error if called without arguments in batch mode
+    if not input_file and batch_mode:
+        click.echo("❌ Error: No input file specified", err=True)
+        click.echo("", err=True)
+        click.echo("Usage: quarry polish INPUT_FILE [OPTIONS]", err=True)
+        click.echo("", err=True)
+        click.echo("Examples:", err=True)
+        click.echo("  quarry polish data.jsonl --dedupe", err=True)
+        click.echo("  quarry polish data.jsonl --dedupe-keys title url", err=True)
+        click.echo("  quarry polish  # Interactive mode", err=True)
+        click.echo("", err=True)
+        click.echo("Run 'quarry polish --help' for full options.", err=True)
+        sys.exit(1)
+    
     # Interactive mode: prompt for missing values
     if not batch_mode and not input_file:
         click.echo("✨ Quarry Polish - Interactive Mode\n", err=True)
@@ -183,18 +197,9 @@ def polish(input_file, output, dedupe, dedupe_keys, dedupe_strategy, transform, 
                 default=default_output
             ).ask()
     
-    # Validate required input in batch mode
+    # Final validation - should not reach here in normal flow
     if not input_file:
         click.echo("❌ Error: No input file specified", err=True)
-        click.echo("", err=True)
-        click.echo("Usage: quarry polish INPUT_FILE [OPTIONS]", err=True)
-        click.echo("", err=True)
-        click.echo("Examples:", err=True)
-        click.echo("  quarry polish data.jsonl --dedupe", err=True)
-        click.echo("  quarry polish data.jsonl --dedupe-keys title url", err=True)
-        click.echo("  quarry polish  # Interactive mode", err=True)
-        click.echo("", err=True)
-        click.echo("Run 'quarry polish --help' for full options.", err=True)
         sys.exit(1)
     
     # Set dedupe to False if still None

@@ -76,6 +76,20 @@ def ship(input_file, destination, table, if_exists, delimiter, pretty, exclude_m
       • Parquet files (.parquet)
     """
     
+    # Show error if called without arguments in batch mode
+    if batch_mode and not input_file:
+        click.echo("❌ Error: No input file specified", err=True)
+        click.echo("", err=True)
+        click.echo("Usage: quarry ship INPUT_FILE DESTINATION [OPTIONS]", err=True)
+        click.echo("", err=True)
+        click.echo("Examples:", err=True)
+        click.echo("  quarry ship data.jsonl output.csv", err=True)
+        click.echo("  quarry ship data.jsonl output.json --pretty", err=True)
+        click.echo("  quarry ship  # Interactive mode", err=True)
+        click.echo("", err=True)
+        click.echo("Run 'quarry ship --help' for full options.", err=True)
+        sys.exit(1)
+    
     # Interactive mode: prompt for missing values
     if not batch_mode and not input_file:
         click.echo("📦 Quarry Ship - Interactive Mode\n", err=True)
@@ -158,30 +172,13 @@ def ship(input_file, destination, table, if_exists, delimiter, pretty, exclude_m
             default=True
         ).ask()
     
-    # Validate required arguments in batch mode
+    # Final validation - should not reach here in normal flow  
     if not input_file:
         click.echo("❌ Error: No input file specified", err=True)
-        click.echo("", err=True)
-        click.echo("Usage: quarry ship INPUT_FILE DESTINATION [OPTIONS]", err=True)
-        click.echo("", err=True)
-        click.echo("Examples:", err=True)
-        click.echo("  quarry ship data.jsonl output.csv", err=True)
-        click.echo("  quarry ship data.jsonl output.json --pretty", err=True)
-        click.echo("  quarry ship  # Interactive mode", err=True)
-        click.echo("", err=True)
-        click.echo("Run 'quarry ship --help' for full options.", err=True)
         sys.exit(1)
     
     if not destination:
         click.echo("❌ Error: No destination specified", err=True)
-        click.echo("", err=True)
-        click.echo("Usage: quarry ship INPUT_FILE DESTINATION [OPTIONS]", err=True)
-        click.echo("", err=True)
-        click.echo("Examples:", err=True)
-        click.echo("  quarry ship data.jsonl output.csv", err=True)
-        click.echo("  quarry ship data.jsonl output.json --pretty", err=True)
-        click.echo("", err=True)
-        click.echo("Run 'quarry ship --help' for full options.", err=True)
         sys.exit(1)
     
     click.echo(f"📦 Exporting {input_file} to {destination}...", err=True)
