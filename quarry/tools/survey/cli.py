@@ -17,7 +17,7 @@ def survey():
     pass
 
 
-@blueprint.command("create")
+@survey.command("create")
 @click.option(
     "--from-probe", "-p",
     type=click.Path(exists=True),
@@ -120,7 +120,7 @@ def create(from_probe, url, file, output, preview):
         sys.exit(1)
 
 
-@blueprint.command("validate")
+@survey.command("validate")
 @click.argument("schema_file", type=click.Path(exists=True))
 def validate(schema_file):
     """
@@ -148,7 +148,7 @@ def validate(schema_file):
         sys.exit(1)
 
 
-@blueprint.command("preview")
+@survey.command("preview")
 @click.argument("schema_file", type=click.Path(exists=True))
 @click.option(
     "--url", "-u",
