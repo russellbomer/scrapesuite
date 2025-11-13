@@ -59,6 +59,7 @@ def quarry(ctx):
     if ctx.invoked_subcommand is None:
         console = Console()
         console.print(BANNER)
+        console.print()  # Add blank line
         click.echo(ctx.get_help())
 
 
