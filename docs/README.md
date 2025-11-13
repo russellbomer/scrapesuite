@@ -1,6 +1,6 @@
-# ScrapeSuite Documentation
+# Foundry Documentation
 
-Welcome to the ScrapeSuite documentation. This directory contains comprehensive guides for using and extending ScrapeSuite.
+Welcome to the Foundry documentation. This directory contains comprehensive guides for using and extending Foundry.
 
 ## Quick Links
 

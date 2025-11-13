@@ -8,14 +8,14 @@ Phase 4 of the Foundry suite is complete. The **Polish** tool transforms, cleans
 
 ### 1. Core Components
 
-- **`scrapesuite/tools/polish/deduplicator.py`**: Deduplicator class
+- **`foundry/tools/polish/deduplicator.py`**: Deduplicator class
   - Hash-based duplicate detection
   - Full-record or field-based deduplication
   - "first" or "last" occurrence strategies
   - Ignores `_meta` fields in hashing
   - Statistics tracking
 
-- **`scrapesuite/tools/polish/transformers.py`**: Field transformation functions
+- **`foundry/tools/polish/transformers.py`**: Field transformation functions
   - `normalize_text()`: Clean and normalize text
   - `clean_whitespace()`: Remove extra whitespace
   - `parse_date()`: Parse dates to ISO format (supports 10+ formats)
@@ -24,7 +24,7 @@ Phase 4 of the Foundry suite is complete. The **Polish** tool transforms, cleans
   - `truncate_text()`: Limit text length
   - `apply_transformation()`: Apply named transformations dynamically
 
-- **`scrapesuite/tools/polish/validators.py`**: Validation system
+- **`foundry/tools/polish/validators.py`**: Validation system
   - `validate_email()`: Email format validation
   - `validate_url()`: URL format validation
   - `validate_date_format()`: Date pattern validation
@@ -34,7 +34,7 @@ Phase 4 of the Foundry suite is complete. The **Polish** tool transforms, cleans
   - `validate_record()`: Comprehensive record validation
   - `ValidationError`: Structured error reporting
 
-- **`scrapesuite/tools/polish/processor.py`**: PolishProcessor class
+- **`foundry/tools/polish/processor.py`**: PolishProcessor class
   - Streaming JSONL processing
   - Transformation pipeline orchestration
   - Deduplication integration
@@ -42,7 +42,7 @@ Phase 4 of the Foundry suite is complete. The **Polish** tool transforms, cleans
   - Custom filter functions
   - Comprehensive statistics tracking
 
-- **`scrapesuite/tools/polish/cli.py`**: Click-based CLI
+- **`foundry/tools/polish/cli.py`**: Click-based CLI
   - `polish` command with options:
     - `--dedupe/--no-dedupe`: Toggle deduplication
     - `--dedupe-keys`: Specify fields for deduplication (repeatable)
@@ -98,7 +98,7 @@ Created comprehensive test suite (`tests/test_polish.py`):
 
 ### 4. Integration
 
-- Integrated into `scrapesuite/foundry.py` main CLI
+- Integrated into `foundry/foundry.py` main CLI
 - Works seamlessly with Forge output
 - Complete pipeline: Probe → Blueprint → Forge → Polish
 
@@ -230,16 +230,16 @@ HTML → Probe → analysis.json
 ## Files Created
 
 **Created**:
-- `scrapesuite/tools/polish/deduplicator.py` (115 LOC)
-- `scrapesuite/tools/polish/transformers.py` (210 LOC)
-- `scrapesuite/tools/polish/validators.py` (220 LOC)
-- `scrapesuite/tools/polish/processor.py` (155 LOC)
-- `scrapesuite/tools/polish/cli.py` (125 LOC)
-- `scrapesuite/tools/polish/__init__.py` (20 LOC)
+- `foundry/tools/polish/deduplicator.py` (115 LOC)
+- `foundry/tools/polish/transformers.py` (210 LOC)
+- `foundry/tools/polish/validators.py` (220 LOC)
+- `foundry/tools/polish/processor.py` (155 LOC)
+- `foundry/tools/polish/cli.py` (125 LOC)
+- `foundry/tools/polish/__init__.py` (20 LOC)
 - `tests/test_polish.py` (390 LOC)
 
 **Modified**:
-- `scrapesuite/foundry.py` (integrated polish command)
+- `foundry/foundry.py` (integrated polish command)
 
 ## Statistics
 

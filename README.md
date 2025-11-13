@@ -1,4 +1,4 @@
-# ScrapeSuite
+# Foundry
 
 **A modern, production-ready Python toolkit for web data extraction, transformation, and export.**
 
@@ -10,7 +10,7 @@
 
 ## 🌟 Overview
 
-ScrapeSuite combines **two powerful toolkits** for different web scraping workflows:
+Foundry combines **two powerful toolkits** for different web scraping workflows:
 
 1. **🧙 Legacy Wizard Suite** - YAML-driven declarative scraping with interactive job generation
 2. **⚒️ Foundry Suite** - Modern command-line tools for extraction pipelines
@@ -23,15 +23,15 @@ Choose the approach that fits your workflow, or use both together!
 
 ```bash
 # Clone and install
-git clone https://github.com/russellbomer/scrapesuite.git
-cd scrapesuite
+git clone https://github.com/russellbomer/foundry.git
+cd foundry
 pip install -r requirements.txt
 
 # Option 1: Use the Wizard (guided scraper creation)
-python -m scrapesuite.cli init
+foundry init
 
 # Option 2: Use Foundry tools (command-line pipeline)
-python -m scrapesuite.foundry probe https://example.com
+foundry probe https://example.com
 ```
 
 **Requirements**: Python 3.12+
@@ -151,7 +151,7 @@ Interactive, YAML-driven scraping with zero coding required.
 
 ```bash
 # Launch interactive wizard
-python -m scrapesuite.cli init
+foundry init
 
 # The wizard will:
 # 1. Ask for URL to scrape
@@ -161,10 +161,10 @@ python -m scrapesuite.cli init
 # 5. Generate YAML job file
 
 # Run generated job
-python -m scrapesuite.cli run jobs/my_job.yml --live --max-items 20
+foundry run jobs/my_job.yml --live --max-items 20
 
 # View state & results
-python -m scrapesuite.cli state
+foundry state
 ```
 
 ### Example Job File
@@ -215,8 +215,8 @@ Python Version:     3.12+
 ## 📁 Project Structure
 
 ```
-scrapesuite/
-├── scrapesuite/              # Main package
+foundry/
+├── foundry/              # Main package
 │   ├── lib/                  # Foundation library
 │   │   ├── http.py          # HTTP client with rate limiting
 │   │   ├── ratelimit.py     # Token bucket rate limiter
@@ -280,7 +280,7 @@ scrapesuite/
 pytest
 
 # Run with coverage
-pytest --cov=scrapesuite --cov-report=html
+pytest --cov=foundry --cov-report=html
 
 # Run specific tool tests
 pytest tests/test_probe.py -v
@@ -381,6 +381,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 - **Documentation**: [docs/](docs/)
 - **Examples**: [examples/jobs/](examples/jobs/)
-- **Issues**: [GitHub Issues](https://github.com/russellbomer/scrapesuite/issues)
+- **Issues**: [GitHub Issues](https://github.com/russellbomer/foundry/issues)
 
 **Happy Scraping! 🎉**

@@ -8,20 +8,20 @@ Phase 3 of the Foundry suite is complete. The **Forge** tool is a schema-driven 
 
 ### 1. Core Components
 
-- **`scrapesuite/tools/forge/parser.py`**: SchemaParser class
+- **`foundry/tools/forge/parser.py`**: SchemaParser class
   - Parses HTML using ExtractionSchema definitions
   - Extracts text or attribute values
   - Handles required/optional fields
   - Validates item completeness
 
-- **`scrapesuite/tools/forge/executor.py`**: ForgeExecutor class
+- **`foundry/tools/forge/executor.py`**: ForgeExecutor class
   - Orchestrates extraction workflow
   - Supports pagination (URL-based)
   - Handles metadata injection
   - Exports to JSONL format
   - Tracks extraction statistics
 
-- **`scrapesuite/tools/forge/cli.py`**: Click-based CLI
+- **`foundry/tools/forge/cli.py`**: Click-based CLI
   - `forge` command with options:
     - `--url`: Extract from URL
     - `--file`: Extract from local HTML file
@@ -76,7 +76,7 @@ Created comprehensive test suite (`tests/test_forge.py`):
 
 ### 4. Integration
 
-- Integrated into `scrapesuite/foundry.py` main CLI
+- Integrated into `foundry/foundry.py` main CLI
 - Works with Blueprint schemas
 - Ready for Polish (Phase 4) integration
 
@@ -182,14 +182,14 @@ HTML → Probe → analysis.json
 ## Files Changed
 
 **Created**:
-- `scrapesuite/tools/forge/parser.py` (150 LOC)
-- `scrapesuite/tools/forge/executor.py` (120 LOC)
-- `scrapesuite/tools/forge/cli.py` (140 LOC)
-- `scrapesuite/tools/forge/__init__.py` (10 LOC)
+- `foundry/tools/forge/parser.py` (150 LOC)
+- `foundry/tools/forge/executor.py` (120 LOC)
+- `foundry/tools/forge/cli.py` (140 LOC)
+- `foundry/tools/forge/__init__.py` (10 LOC)
 - `tests/test_forge.py` (390 LOC)
 
 **Modified**:
-- `scrapesuite/foundry.py` (integrated forge command)
+- `foundry/foundry.py` (integrated forge command)
 
 ## Statistics
 

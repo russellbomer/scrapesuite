@@ -1,4 +1,4 @@
-# ScrapeSuite Manual Testing Plan
+# Foundry Manual Testing Plan
 
 **Version**: 2.1  
 **Date**: November 13, 2025  
@@ -8,7 +8,7 @@
 
 ## Overview
 
-This testing plan emphasizes **real-world business intelligence scenarios** and the new **infinite scroll detection** features. ScrapeSuite now includes:
+This testing plan emphasizes **real-world business intelligence scenarios** and the new **infinite scroll detection** features. Foundry now includes:
 
 - 🎯 **15 BI Templates** (Article, Product, Event, Job, Recipe, Review, Person + 8 BI-specific)
 - 🔄 **Infinite Scroll Detection** with interactive API discovery guide
@@ -19,8 +19,8 @@ This testing plan emphasizes **real-world business intelligence scenarios** and 
 ## Prerequisites
 
 ```bash
-# Ensure you're in the scrapesuite directory
-cd /workspaces/scrapesuite
+# Ensure you're in the foundry directory
+cd /workspaces/foundry
 
 # Verify installation
 python --version  # Should be 3.12+
@@ -40,7 +40,7 @@ mkdir -p /tmp/test_output
 **Test 1: Browse Available Templates**
 ```bash
 # View all 15 templates
-python -m scrapesuite.foundry blueprint create /tmp/test_output/template_test.yml
+python -m foundry.foundry blueprint create /tmp/test_output/template_test.yml
 
 # When prompted:
 # 1. Enter name: "bi_test"
@@ -72,7 +72,7 @@ cat /tmp/test_output/template_test.yml
 **Test 2: Financial Data Template**
 ```bash
 # Create schema for stock tracking
-python -m scrapesuite.foundry blueprint create /tmp/test_output/stocks.yml
+python -m foundry.foundry blueprint create /tmp/test_output/stocks.yml
 
 # Select template: "8" (Financial Data)
 # This auto-configures fields: symbol, company_name, price, change, volume, market_cap
@@ -81,7 +81,7 @@ python -m scrapesuite.foundry blueprint create /tmp/test_output/stocks.yml
 **Test 3: Real Estate Template**
 ```bash
 # Create schema for property monitoring
-python -m scrapesuite.foundry blueprint create /tmp/test_output/properties.yml
+python -m foundry.foundry blueprint create /tmp/test_output/properties.yml
 
 # Select template: "9" (Real Estate)
 # Auto-configures: address, price, bedrooms, bathrooms, square_feet, agent
@@ -94,7 +94,7 @@ python -m scrapesuite.foundry blueprint create /tmp/test_output/properties.yml
 **Test 4: Interactive API Guide**
 ```bash
 # Show the step-by-step API discovery guide
-python -m scrapesuite.foundry probe --find-api
+python -m foundry.foundry probe --find-api
 
 # Expected Output:
 # - Rich formatted guide with DevTools instructions
@@ -136,7 +136,7 @@ cat > /tmp/test_output/infinite_scroll.html << 'EOF'
 EOF
 
 # Analyze page
-python -m scrapesuite.foundry probe --file /tmp/test_output/infinite_scroll.html
+python -m foundry.foundry probe --file /tmp/test_output/infinite_scroll.html
 
 # Expected Output:
 # - Yellow warning panel: "⚠ Infinite Scroll Detected"
@@ -171,7 +171,7 @@ cat > /tmp/test_output/high_confidence.html << 'EOF'
 </html>
 EOF
 
-python -m scrapesuite.foundry probe --file /tmp/test_output/high_confidence.html | grep "Infinite Scroll"
+python -m foundry.foundry probe --file /tmp/test_output/high_confidence.html | grep "Infinite Scroll"
 
 # Should show high confidence (70%+)
 ```
@@ -183,7 +183,7 @@ python -m scrapesuite.foundry probe --file /tmp/test_output/high_confidence.html
 **Test 7: Financial Data Extraction (Yahoo Finance Style)**
 ```bash
 # Analyze a stock listing page structure
-python -m scrapesuite.foundry probe https://finance.yahoo.com/most-active
+python -m foundry.foundry probe https://finance.yahoo.com/most-active
 
 # Expected:
 # - Detects stock row containers
@@ -229,7 +229,7 @@ cat > /tmp/test_output/real_estate.html << 'EOF'
 EOF
 
 # Analyze structure
-python -m scrapesuite.foundry probe --file /tmp/test_output/real_estate.html
+python -m foundry.foundry probe --file /tmp/test_output/real_estate.html
 
 # Expected:
 # - Container: article.property-card
@@ -266,10 +266,10 @@ cat > /tmp/test_output/companies.html << 'EOF'
 EOF
 
 # Analyze and create schema using template
-python -m scrapesuite.foundry probe --file /tmp/test_output/companies.html
+python -m foundry.foundry probe --file /tmp/test_output/companies.html
 
 # Then create schema with Company Directory template
-python -m scrapesuite.foundry blueprint create /tmp/test_output/company_schema.yml
+python -m foundry.foundry blueprint create /tmp/test_output/company_schema.yml
 # Select template: "10" (Company Directory)
 # Container selector: .company-card
 # Customize field selectors based on probe output
@@ -308,10 +308,10 @@ cat > /tmp/test_output/analytics.html << 'EOF'
 EOF
 
 # Analyze
-python -m scrapesuite.foundry probe --file /tmp/test_output/analytics.html
+python -m foundry.foundry probe --file /tmp/test_output/analytics.html
 
 # Create schema with Analytics Metrics template
-python -m scrapesuite.foundry blueprint create /tmp/test_output/metrics_schema.yml
+python -m foundry.foundry blueprint create /tmp/test_output/metrics_schema.yml
 # Template: "11" (Analytics Metrics)
 # Container: tr.metric-row
 ```
@@ -325,7 +325,7 @@ python -m scrapesuite.foundry blueprint create /tmp/test_output/metrics_schema.y
 **Test 11: Framework Detection with BI Context**
 ```bash
 # Test probe on fixture with framework hints
-python -m scrapesuite.foundry probe --file tests/fixtures/fda_list.html
+python -m foundry.foundry probe --file tests/fixtures/fda_list.html
 
 # Expected Output:
 # - Framework detection (Drupal/Views likely)
@@ -338,7 +338,7 @@ python -m scrapesuite.foundry probe --file tests/fixtures/fda_list.html
 **Test 12: JSON Output for Automation**
 ```bash
 # Get analysis in JSON format for programmatic use
-python -m scrapesuite.foundry probe \
+python -m foundry.foundry probe \
   --file tests/fixtures/fda_list.html \
   --format json \
   --output /tmp/test_output/analysis.json
@@ -359,7 +359,7 @@ if data['containers']:
 **Test 13: Probe with Auto-Analysis in Blueprint**
 ```bash
 # Blueprint now auto-runs Probe when URL provided
-python -m scrapesuite.foundry blueprint create /tmp/test_output/auto_probe.yml
+python -m foundry.foundry blueprint create /tmp/test_output/auto_probe.yml
 
 # When prompted:
 # - Enter URL: https://news.ycombinator.com
@@ -376,7 +376,7 @@ python -m scrapesuite.foundry blueprint create /tmp/test_output/auto_probe.yml
 **Test 14: Article Template (News/Blog)**
 ```bash
 # Quick schema for news extraction
-python -m scrapesuite.foundry blueprint create /tmp/test_output/news_schema.yml
+python -m foundry.foundry blueprint create /tmp/test_output/news_schema.yml
 
 # Steps:
 # 1. Name: "tech_news"
@@ -395,7 +395,7 @@ cat /tmp/test_output/news_schema.yml
 **Test 15: Product Template (E-commerce)**
 ```bash
 # Schema for product scraping
-python -m scrapesuite.foundry blueprint create /tmp/test_output/products_schema.yml
+python -m foundry.foundry blueprint create /tmp/test_output/products_schema.yml
 
 # Template: "2" (Product)
 # Pre-configured fields:
@@ -408,7 +408,7 @@ grep -A 20 "fields:" /tmp/test_output/products_schema.yml
 **Test 16: Job Template (Recruitment)**
 ```bash
 # Schema for job board scraping
-python -m scrapesuite.foundry blueprint create /tmp/test_output/jobs_schema.yml
+python -m foundry.foundry blueprint create /tmp/test_output/jobs_schema.yml
 
 # Template: "4" (Job)
 # Fields: title, company, location, salary, description, job_type
@@ -457,7 +457,7 @@ cat > /tmp/test_output/products.html << 'EOF'
 EOF
 
 # Extract
-python -m scrapesuite.foundry forge \
+python -m foundry.foundry forge \
   /tmp/test_output/simple_product_schema.yml \
   --file /tmp/test_output/products.html \
   --output /tmp/test_output/extracted_products.jsonl
@@ -471,7 +471,7 @@ cat /tmp/test_output/extracted_products.jsonl | python -m json.tool
 # Complete workflow for financial data extraction
 
 # Step 1: Analyze structure
-python -m scrapesuite.foundry probe \
+python -m foundry.foundry probe \
   --file /tmp/test_output/stocks.html \
   --output /tmp/test_output/stocks_analysis.json
 
@@ -479,20 +479,20 @@ python -m scrapesuite.foundry probe \
 # (Manual: select template 8, configure selectors)
 
 # Step 3: Extract data
-python -m scrapesuite.foundry forge \
+python -m foundry.foundry forge \
   /tmp/test_output/financial_schema.yml \
   --file /tmp/test_output/stocks.html \
   --output /tmp/test_output/stock_data.jsonl
 
 # Step 4: Clean and dedupe
-python -m scrapesuite.foundry polish \
+python -m foundry.foundry polish \
   /tmp/test_output/stock_data.jsonl \
   --dedupe \
   --dedupe-keys symbol \
   --output /tmp/test_output/stock_data_clean.jsonl
 
 # Step 5: Export to database for BI tools
-python -m scrapesuite.foundry crate \
+python -m foundry.foundry crate \
   /tmp/test_output/stock_data_clean.jsonl \
   /tmp/test_output/stocks.db \
   --table stock_quotes
@@ -512,7 +512,7 @@ cat > /tmp/test_output/messy_financial.jsonl << 'EOF'
 EOF
 
 # Clean and normalize
-python -m scrapesuite.foundry polish \
+python -m foundry.foundry polish \
   /tmp/test_output/messy_financial.jsonl \
   --transform symbol:normalize_text \
   --transform price:extract_number \
@@ -535,7 +535,7 @@ cat > /tmp/test_output/companies_dupes.jsonl << 'EOF'
 EOF
 
 # Deduplicate by company name
-python -m scrapesuite.foundry polish \
+python -m foundry.foundry polish \
   /tmp/test_output/companies_dupes.jsonl \
   --dedupe \
   --dedupe-keys company_name \
@@ -559,12 +559,12 @@ cat > /tmp/test_output/bi_data.jsonl << 'EOF'
 EOF
 
 # Export to CSV for Excel/Tableau
-python -m scrapesuite.foundry crate \
+python -m foundry.foundry crate \
   /tmp/test_output/bi_data.jsonl \
   /tmp/test_output/bi_metrics.csv
 
 # Export to SQLite for SQL analysis
-python -m scrapesuite.foundry crate \
+python -m foundry.foundry crate \
   /tmp/test_output/bi_data.jsonl \
   /tmp/test_output/bi_metrics.db \
   --table daily_metrics
@@ -619,7 +619,7 @@ cat > /tmp/test_output/stock_market.html << 'EOF'
 EOF
 
 # 2. Analyze structure
-python -m scrapesuite.foundry probe \
+python -m foundry.foundry probe \
   --file /tmp/test_output/stock_market.html \
   --format json \
   --output /tmp/test_output/stock_analysis.json
@@ -646,13 +646,13 @@ fields:
 EOF
 
 # 4. Extract data
-python -m scrapesuite.foundry forge \
+python -m foundry.foundry forge \
   /tmp/test_output/stock_schema.yml \
   --file /tmp/test_output/stock_market.html \
   --output /tmp/test_output/stock_raw.jsonl
 
 # 5. Clean and normalize
-python -m scrapesuite.foundry polish \
+python -m foundry.foundry polish \
   /tmp/test_output/stock_raw.jsonl \
   --transform price:extract_number \
   --transform change:extract_number \
@@ -661,7 +661,7 @@ python -m scrapesuite.foundry polish \
   --output /tmp/test_output/stock_clean.jsonl
 
 # 6. Export to database for tracking
-python -m scrapesuite.foundry crate \
+python -m foundry.foundry crate \
   /tmp/test_output/stock_clean.jsonl \
   /tmp/test_output/portfolio.db \
   --table stock_prices
@@ -683,7 +683,7 @@ ORDER BY CAST(change AS REAL) DESC;
 # Use the real estate HTML from Test 8
 
 # 1. Analyze
-python -m scrapesuite.foundry probe \
+python -m foundry.foundry probe \
   --file /tmp/test_output/real_estate.html
 
 # 2. Create schema (Real Estate template)
@@ -712,13 +712,13 @@ fields:
 EOF
 
 # 3. Extract
-python -m scrapesuite.foundry forge \
+python -m foundry.foundry forge \
   /tmp/test_output/properties_schema.yml \
   --file /tmp/test_output/real_estate.html \
   --output /tmp/test_output/properties.jsonl
 
 # 4. Export for analysis
-python -m scrapesuite.foundry crate \
+python -m foundry.foundry crate \
   /tmp/test_output/properties.jsonl \
   /tmp/test_output/real_estate.csv
 
@@ -777,13 +777,13 @@ fields:
 EOF
 
 # 3. Extract and track
-python -m scrapesuite.foundry forge \
+python -m foundry.foundry forge \
   /tmp/test_output/competitive_schema.yml \
   --file /tmp/test_output/competitors.html \
   --output /tmp/test_output/competitor_data.jsonl
 
 # 4. Export to database
-python -m scrapesuite.foundry crate \
+python -m foundry.foundry crate \
   /tmp/test_output/competitor_data.jsonl \
   /tmp/test_output/competitive_intel.db \
   --table competitor_products
@@ -825,7 +825,7 @@ cat > /tmp/test_output/intersection_observer.html << 'EOF'
 </html>
 EOF
 
-python -m scrapesuite.foundry probe --file /tmp/test_output/intersection_observer.html | grep -A 10 "Infinite Scroll"
+python -m foundry.foundry probe --file /tmp/test_output/intersection_observer.html | grep -A 10 "Infinite Scroll"
 
 # React infinite scroll
 cat > /tmp/test_output/react_infinite.html << 'EOF'
@@ -839,7 +839,7 @@ cat > /tmp/test_output/react_infinite.html << 'EOF'
 </html>
 EOF
 
-python -m scrapesuite.foundry probe --file /tmp/test_output/react_infinite.html | grep "Infinite Scroll"
+python -m foundry.foundry probe --file /tmp/test_output/react_infinite.html | grep "Infinite Scroll"
 
 # Waypoints library
 cat > /tmp/test_output/waypoints.html << 'EOF'
@@ -852,7 +852,7 @@ cat > /tmp/test_output/waypoints.html << 'EOF'
 </html>
 EOF
 
-python -m scrapesuite.foundry probe --file /tmp/test_output/waypoints.html | grep "Infinite Scroll"
+python -m foundry.foundry probe --file /tmp/test_output/waypoints.html | grep "Infinite Scroll"
 ```
 
 **Test 26: No False Positives**
@@ -873,7 +873,7 @@ cat > /tmp/test_output/normal_pagination.html << 'EOF'
 </html>
 EOF
 
-python -m scrapesuite.foundry probe --file /tmp/test_output/normal_pagination.html
+python -m foundry.foundry probe --file /tmp/test_output/normal_pagination.html
 
 # Should NOT show infinite scroll warning (has pagination links)
 ```
@@ -883,7 +883,7 @@ python -m scrapesuite.foundry probe --file /tmp/test_output/normal_pagination.ht
 **Test 27: Interactive Guide Walkthrough**
 ```bash
 # Launch the full guide
-python -m scrapesuite.foundry probe --find-api
+python -m foundry.foundry probe --find-api
 
 # Verify output includes:
 # - DevTools instructions (F12, Network tab)
@@ -900,13 +900,13 @@ python -m scrapesuite.foundry probe --find-api
 # Workflow: Detect infinite scroll → Guide user to API
 
 # 1. Analyze page with infinite scroll
-python -m scrapesuite.foundry probe --file /tmp/test_output/infinite_scroll.html
+python -m foundry.foundry probe --file /tmp/test_output/infinite_scroll.html
 
 # Should show warning with:
 # "Run: foundry probe --find-api"
 
 # 2. Follow the recommendation
-python -m scrapesuite.foundry probe --find-api
+python -m foundry.foundry probe --find-api
 
 # User now has complete guide to find the API endpoint
 ```
@@ -922,7 +922,7 @@ python -m scrapesuite.foundry probe --find-api
 # Try to use non-existent template
 # (Interactive test - select invalid option during blueprint create)
 
-python -m scrapesuite.foundry blueprint create /tmp/test_output/test.yml
+python -m foundry.foundry blueprint create /tmp/test_output/test.yml
 # Enter: "99" for template selection
 # Expected: Error message, prompt to select valid template
 ```
@@ -942,7 +942,7 @@ fields:
     selector: h2
 EOF
 
-python -m scrapesuite.foundry forge \
+python -m foundry.foundry forge \
   /tmp/test_output/empty_schema.yml \
   --file /tmp/test_output/no_items.html \
   --output /tmp/test_output/empty_result.jsonl
@@ -962,7 +962,7 @@ These tests require internet connection and may be skipped if sites are unavaila
 **Test 31: GitHub Trending (Company Directory)**
 ```bash
 # Analyze GitHub trending repos
-python -m scrapesuite.foundry probe https://github.com/trending
+python -m foundry.foundry probe https://github.com/trending
 
 # Expected:
 # - Detects repository containers
@@ -973,7 +973,7 @@ python -m scrapesuite.foundry probe https://github.com/trending
 **Test 32: Hacker News (News/Content)**
 ```bash
 # Analyze HN front page
-python -m scrapesuite.foundry probe https://news.ycombinator.com
+python -m foundry.foundry probe https://news.ycombinator.com
 
 # Expected:
 # - Detects story rows (.athing)
@@ -984,7 +984,7 @@ python -m scrapesuite.foundry probe https://news.ycombinator.com
 **Test 33: Product Hunt (Product Listings)**
 ```bash
 # Analyze Product Hunt
-python -m scrapesuite.foundry probe https://www.producthunt.com/
+python -m foundry.foundry probe https://www.producthunt.com/
 
 # Expected:
 # - Detects product cards
@@ -1082,13 +1082,13 @@ cat > /tmp/quick_infinite.html << 'EOF'
 <script>window.onscroll = loadMore;</script></body></html>
 EOF
 
-python -m scrapesuite.foundry probe --file /tmp/quick_infinite.html | grep "Infinite Scroll"
+python -m foundry.foundry probe --file /tmp/quick_infinite.html | grep "Infinite Scroll"
 
 # 2. Test API guide
-python -m scrapesuite.foundry probe --find-api | head -20
+python -m foundry.foundry probe --find-api | head -20
 
 # 3. Test template creation
-python -m scrapesuite.foundry blueprint create /tmp/quick_template.yml <<EOF
+python -m foundry.foundry blueprint create /tmp/quick_template.yml <<EOF
 quick_test
 2
 n
@@ -1161,8 +1161,8 @@ python -m pytest tests/test_bi_use_cases.py::TestInfiniteScrollDetection -v
 ````
 
 ```bash
-# Ensure you're in the scrapesuite directory
-cd /workspaces/scrapesuite
+# Ensure you're in the foundry directory
+cd /workspaces/foundry
 
 # Verify installation
 python --version  # Should be 3.12+
@@ -1182,7 +1182,7 @@ mkdir -p /tmp/test_output
 **Test 1: Analyze Live URL**
 ```bash
 # Test probe on real website
-python -m scrapesuite.foundry probe https://news.ycombinator.com
+python -m foundry.foundry probe https://news.ycombinator.com
 
 # Expected Output:
 # - Framework detection (likely "None" or generic)
@@ -1194,7 +1194,7 @@ python -m scrapesuite.foundry probe https://news.ycombinator.com
 **Test 2: Analyze Local File**
 ```bash
 # Test with fixture file
-python -m scrapesuite.foundry probe \
+python -m foundry.foundry probe \
   --file tests/fixtures/fda_list.html
 
 # Expected Output:
@@ -1206,7 +1206,7 @@ python -m scrapesuite.foundry probe \
 **Test 3: JSON Output**
 ```bash
 # Test JSON format
-python -m scrapesuite.foundry probe \
+python -m foundry.foundry probe \
   --file tests/fixtures/fda_list.html \
   --format json \
   --output /tmp/test_output/probe_result.json
@@ -1220,7 +1220,7 @@ cat /tmp/test_output/probe_result.json | python -m json.tool | head -20
 **Test 4: Framework Detection**
 ```bash
 # Test WordPress detection
-python -m scrapesuite.foundry probe \
+python -m foundry.foundry probe \
   --file tests/fixtures/fda_list.html
 
 # Should show framework(s) detected with confidence scores
@@ -1233,7 +1233,7 @@ python -m scrapesuite.foundry probe \
 **Test 5: Create Schema Interactively**
 ```bash
 # Interactive schema creation (will prompt for input)
-python -m scrapesuite.foundry blueprint create /tmp/test_output/test_schema.yml
+python -m foundry.foundry blueprint create /tmp/test_output/test_schema.yml
 
 # When prompted, enter:
 # - URL: https://example.com
@@ -1261,7 +1261,7 @@ fields:
 EOF
 
 # Validate it
-python -m scrapesuite.foundry blueprint validate /tmp/test_output/valid_schema.yml
+python -m foundry.foundry blueprint validate /tmp/test_output/valid_schema.yml
 
 # Expected: "✓ Schema is valid"
 ```
@@ -1269,7 +1269,7 @@ python -m scrapesuite.foundry blueprint validate /tmp/test_output/valid_schema.y
 **Test 7: Preview Extraction**
 ```bash
 # Test preview with actual HTML
-python -m scrapesuite.foundry blueprint preview \
+python -m foundry.foundry blueprint preview \
   examples/jobs/fda.yml \
   --file tests/fixtures/fda_list.html
 
@@ -1284,7 +1284,7 @@ url: not-a-url
 fields: "this should be a list"
 EOF
 
-python -m scrapesuite.foundry blueprint validate /tmp/test_output/bad_schema.yml
+python -m foundry.foundry blueprint validate /tmp/test_output/bad_schema.yml
 
 # Expected: Validation errors shown
 ```
@@ -1296,7 +1296,7 @@ python -m scrapesuite.foundry blueprint validate /tmp/test_output/bad_schema.yml
 **Test 9: Extract from File**
 ```bash
 # Basic extraction
-python -m scrapesuite.foundry forge \
+python -m foundry.foundry forge \
   examples/jobs/fda.yml \
   --file tests/fixtures/fda_list.html \
   --output /tmp/test_output/extracted.jsonl
@@ -1309,7 +1309,7 @@ head -1 /tmp/test_output/extracted.jsonl | python -m json.tool
 **Test 10: Extract from URL (with rate limiting)**
 ```bash
 # Extract from live URL
-python -m scrapesuite.foundry forge \
+python -m foundry.foundry forge \
   examples/jobs/fda.yml \
   --url https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts \
   --output /tmp/test_output/live_extracted.jsonl \
@@ -1322,7 +1322,7 @@ wc -l /tmp/test_output/live_extracted.jsonl
 **Test 11: Pagination Test**
 ```bash
 # Test with max pages limit
-python -m scrapesuite.foundry forge \
+python -m foundry.foundry forge \
   examples/jobs/fda.yml \
   --file tests/fixtures/fda_list.html \
   --max-pages 2 \
@@ -1334,7 +1334,7 @@ python -m scrapesuite.foundry forge \
 **Test 12: Metadata Test**
 ```bash
 # Extract and check metadata
-python -m scrapesuite.foundry forge \
+python -m foundry.foundry forge \
   examples/jobs/fda.yml \
   --file tests/fixtures/fda_list.html \
   --output /tmp/test_output/with_meta.jsonl
@@ -1362,7 +1362,7 @@ cat > /tmp/test_output/dupes.jsonl << 'EOF'
 EOF
 
 # Deduplicate
-python -m scrapesuite.foundry polish \
+python -m foundry.foundry polish \
   /tmp/test_output/dupes.jsonl \
   --dedupe \
   --dedupe-keys id \
@@ -1381,7 +1381,7 @@ cat > /tmp/test_output/transform_test.jsonl << 'EOF'
 EOF
 
 # Apply transformations
-python -m scrapesuite.foundry polish \
+python -m foundry.foundry polish \
   /tmp/test_output/transform_test.jsonl \
   --transform title:normalize_text \
   --transform url:extract_domain \
@@ -1402,7 +1402,7 @@ cat > /tmp/test_output/validate_test.jsonl << 'EOF'
 EOF
 
 # Validate and filter
-python -m scrapesuite.foundry polish \
+python -m foundry.foundry polish \
   /tmp/test_output/validate_test.jsonl \
   --validate email:email \
   --validate url:url \
@@ -1416,7 +1416,7 @@ wc -l /tmp/test_output/validated.jsonl
 **Test 16: Statistics**
 ```bash
 # Get statistics
-python -m scrapesuite.foundry polish \
+python -m foundry.foundry polish \
   /tmp/test_output/dupes.jsonl \
   --dedupe \
   --dedupe-keys id \
@@ -1439,7 +1439,7 @@ cat > /tmp/test_output/export_test.jsonl << 'EOF'
 EOF
 
 # Export to CSV
-python -m scrapesuite.foundry crate \
+python -m foundry.foundry crate \
   /tmp/test_output/export_test.jsonl \
   /tmp/test_output/output.csv
 
@@ -1450,7 +1450,7 @@ cat /tmp/test_output/output.csv
 **Test 18: Export to JSON**
 ```bash
 # Export to pretty JSON
-python -m scrapesuite.foundry crate \
+python -m foundry.foundry crate \
   /tmp/test_output/export_test.jsonl \
   /tmp/test_output/output.json \
   --pretty
@@ -1462,7 +1462,7 @@ cat /tmp/test_output/output.json
 **Test 19: Export to SQLite**
 ```bash
 # Export to SQLite
-python -m scrapesuite.foundry crate \
+python -m foundry.foundry crate \
   /tmp/test_output/export_test.jsonl \
   /tmp/test_output/output.db \
   --table articles
@@ -1480,7 +1480,7 @@ cat > /tmp/test_output/with_metadata.jsonl << 'EOF'
 EOF
 
 # Export excluding metadata
-python -m scrapesuite.foundry crate \
+python -m foundry.foundry crate \
   /tmp/test_output/with_metadata.jsonl \
   /tmp/test_output/no_meta.csv \
   --exclude-meta
@@ -1492,7 +1492,7 @@ cat /tmp/test_output/no_meta.csv
 **Test 21: SQLite Replace/Append Modes**
 ```bash
 # Create initial export
-python -m scrapesuite.foundry crate \
+python -m foundry.foundry crate \
   /tmp/test_output/export_test.jsonl \
   /tmp/test_output/mode_test.db \
   --table items
@@ -1501,7 +1501,7 @@ python -m scrapesuite.foundry crate \
 sqlite3 /tmp/test_output/mode_test.db "SELECT COUNT(*) FROM items;"
 
 # Append more data
-python -m scrapesuite.foundry crate \
+python -m foundry.foundry crate \
   /tmp/test_output/export_test.jsonl \
   /tmp/test_output/mode_test.db \
   --table items \
@@ -1511,7 +1511,7 @@ python -m scrapesuite.foundry crate \
 sqlite3 /tmp/test_output/mode_test.db "SELECT COUNT(*) FROM items;"
 
 # Replace all data
-python -m scrapesuite.foundry crate \
+python -m foundry.foundry crate \
   /tmp/test_output/export_test.jsonl \
   /tmp/test_output/mode_test.db \
   --table items \
@@ -1528,19 +1528,19 @@ sqlite3 /tmp/test_output/mode_test.db "SELECT COUNT(*) FROM items;"
 **Test 22: End-to-End Foundry Pipeline**
 ```bash
 # Step 1: Analyze
-python -m scrapesuite.foundry probe \
+python -m foundry.foundry probe \
   --file tests/fixtures/fda_list.html \
   --format json \
   --output /tmp/test_output/pipeline_analysis.json
 
 # Step 2: Extract (using existing schema)
-python -m scrapesuite.foundry forge \
+python -m foundry.foundry forge \
   examples/jobs/fda.yml \
   --file tests/fixtures/fda_list.html \
   --output /tmp/test_output/pipeline_raw.jsonl
 
 # Step 3: Clean and deduplicate
-python -m scrapesuite.foundry polish \
+python -m foundry.foundry polish \
   /tmp/test_output/pipeline_raw.jsonl \
   --dedupe \
   --dedupe-keys title \
@@ -1548,12 +1548,12 @@ python -m scrapesuite.foundry polish \
   --output /tmp/test_output/pipeline_clean.jsonl
 
 # Step 4: Export to CSV
-python -m scrapesuite.foundry crate \
+python -m foundry.foundry crate \
   /tmp/test_output/pipeline_clean.jsonl \
   /tmp/test_output/pipeline_final.csv
 
 # Step 5: Export to SQLite
-python -m scrapesuite.foundry crate \
+python -m foundry.foundry crate \
   /tmp/test_output/pipeline_clean.jsonl \
   /tmp/test_output/pipeline_final.db \
   --table fda_recalls
@@ -1577,7 +1577,7 @@ sqlite3 /tmp/test_output/pipeline_final.db "SELECT title FROM fda_recalls LIMIT 
 **Test 23: Run Wizard (Manual)**
 ```bash
 # Launch interactive wizard
-python -m scrapesuite.cli init
+python -m foundry.cli init
 
 # Follow prompts:
 # 1. Choose template or paste HTML
@@ -1592,7 +1592,7 @@ ls -l jobs/
 **Test 24: Run Generated Job**
 ```bash
 # Run a job created by wizard (use actual filename)
-python -m scrapesuite.cli run jobs/YOUR_JOB.yml --offline --max-items 5
+python -m foundry.cli run jobs/YOUR_JOB.yml --offline --max-items 5
 
 # Expected: Extracts data using configured selectors
 ```
@@ -1604,7 +1604,7 @@ python -m scrapesuite.cli run jobs/YOUR_JOB.yml --offline --max-items 5
 **Test 25: Run Example Job (Offline)**
 ```bash
 # Run FDA example offline
-python -m scrapesuite.cli run examples/jobs/fda.yml --offline --max-items 10
+python -m foundry.cli run examples/jobs/fda.yml --offline --max-items 10
 
 # Expected: Runs without network, uses cached/fixture data
 ```
@@ -1612,7 +1612,7 @@ python -m scrapesuite.cli run examples/jobs/fda.yml --offline --max-items 10
 **Test 26: Run Job (Live)**
 ```bash
 # Run live job with limits
-python -m scrapesuite.cli run examples/jobs/fda.yml --live --max-items 5
+python -m foundry.cli run examples/jobs/fda.yml --live --max-items 5
 
 # Expected: 
 # - Fetches from actual URL
@@ -1623,7 +1623,7 @@ python -m scrapesuite.cli run examples/jobs/fda.yml --live --max-items 5
 **Test 27: Job with Rate Limiting**
 ```bash
 # Run with custom rate limit
-python -m scrapesuite.cli run examples/jobs/fda.yml \
+python -m foundry.cli run examples/jobs/fda.yml \
   --live \
   --max-items 10 \
   --rps 0.5
@@ -1638,7 +1638,7 @@ python -m scrapesuite.cli run examples/jobs/fda.yml \
 **Test 28: View State**
 ```bash
 # Check state database
-python -m scrapesuite.cli state
+python -m foundry.cli state
 
 # Expected: Shows jobs, cursor positions, item counts
 ```
@@ -1646,10 +1646,10 @@ python -m scrapesuite.cli state
 **Test 29: Reset Job State**
 ```bash
 # Reset state for specific job
-python -m scrapesuite.cli reset fda_recalls
+python -m foundry.cli reset fda_recalls
 
 # Verify state was cleared:
-python -m scrapesuite.cli state
+python -m foundry.cli state
 ```
 
 ---
@@ -1660,10 +1660,10 @@ python -m scrapesuite.cli state
 ```bash
 # Check if URL is allowed by robots.txt
 python -c "
-from scrapesuite import check_robots
+from foundry import check_robots
 
 url = 'https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts'
-allowed = check_robots(url, 'ScrapeSuite')
+allowed = check_robots(url, 'Foundry')
 print(f'Allowed: {allowed}')
 "
 
@@ -1679,7 +1679,7 @@ print(f'Allowed: {allowed}')
 **Test 31: Invalid Schema File**
 ```bash
 # Try to use non-existent schema
-python -m scrapesuite.foundry forge /tmp/nonexistent.yml \
+python -m foundry.foundry forge /tmp/nonexistent.yml \
   --file tests/fixtures/fda_list.html
 
 # Expected: Clear error message
@@ -1688,7 +1688,7 @@ python -m scrapesuite.foundry forge /tmp/nonexistent.yml \
 **Test 32: Invalid HTML File**
 ```bash
 # Try with non-existent HTML
-python -m scrapesuite.foundry probe --file /tmp/nonexistent.html
+python -m foundry.foundry probe --file /tmp/nonexistent.html
 
 # Expected: File not found error
 ```
@@ -1699,7 +1699,7 @@ python -m scrapesuite.foundry probe --file /tmp/nonexistent.html
 echo "not valid json" > /tmp/test_output/bad.jsonl
 
 # Try to process it
-python -m scrapesuite.foundry polish /tmp/test_output/bad.jsonl \
+python -m foundry.foundry polish /tmp/test_output/bad.jsonl \
   --dedupe \
   --output /tmp/test_output/out.jsonl
 
@@ -1712,7 +1712,7 @@ python -m scrapesuite.foundry polish /tmp/test_output/bad.jsonl \
 touch /tmp/test_output/empty.jsonl
 
 # Try to export it
-python -m scrapesuite.foundry crate \
+python -m foundry.foundry crate \
   /tmp/test_output/empty.jsonl \
   /tmp/test_output/empty.csv
 
@@ -1726,7 +1726,7 @@ python -m scrapesuite.foundry crate \
 **Test 35: Invalid URL**
 ```bash
 # Try invalid URL
-python -m scrapesuite.foundry probe https://this-domain-does-not-exist-12345.com
+python -m foundry.foundry probe https://this-domain-does-not-exist-12345.com
 
 # Expected: Network error handling
 ```
@@ -1734,7 +1734,7 @@ python -m scrapesuite.foundry probe https://this-domain-does-not-exist-12345.com
 **Test 36: Timeout Handling**
 ```bash
 # Try URL that times out (example)
-python -m scrapesuite.foundry forge examples/jobs/fda.yml \
+python -m foundry.foundry forge examples/jobs/fda.yml \
   --url https://httpbin.org/delay/30 \
   --max-pages 1
 
@@ -1758,14 +1758,14 @@ with open('/tmp/test_output/large.jsonl', 'w') as f:
 "
 
 # Process it
-time python -m scrapesuite.foundry polish \
+time python -m foundry.foundry polish \
   /tmp/test_output/large.jsonl \
   --dedupe \
   --dedupe-keys id \
   --output /tmp/test_output/large_clean.jsonl
 
 # Export to database
-time python -m scrapesuite.foundry crate \
+time python -m foundry.foundry crate \
   /tmp/test_output/large_clean.jsonl \
   /tmp/test_output/large.db \
   --table records
@@ -1777,7 +1777,7 @@ sqlite3 /tmp/test_output/large.db "SELECT COUNT(*) FROM records;"
 **Test 38: Memory Usage**
 ```bash
 # Monitor memory while processing large file
-/usr/bin/time -v python -m scrapesuite.foundry crate \
+/usr/bin/time -v python -m foundry.foundry crate \
   /tmp/test_output/large.jsonl \
   /tmp/test_output/large_export.csv 2>&1 | grep "Maximum resident"
 ```
@@ -1791,7 +1791,7 @@ sqlite3 /tmp/test_output/large.db "SELECT COUNT(*) FROM records;"
 **Test 39: Export Legacy Job Output with Foundry**
 ```bash
 # Run legacy job to create output
-python -m scrapesuite.cli run examples/jobs/fda.yml --offline --max-items 10
+python -m foundry.cli run examples/jobs/fda.yml --offline --max-items 10
 
 # Find the output file
 OUTPUT_FILE=$(ls -t data/cache/fda/*.parquet 2>/dev/null | head -1)
@@ -1810,14 +1810,14 @@ except Exception as e:
 "
 
 # Process with Foundry tools
-python -m scrapesuite.foundry polish \
+python -m foundry.foundry polish \
   /tmp/test_output/legacy_output.jsonl \
   --dedupe \
   --stats \
   --output /tmp/test_output/polished_legacy.jsonl
 
 # Export
-python -m scrapesuite.foundry crate \
+python -m foundry.foundry crate \
   /tmp/test_output/polished_legacy.jsonl \
   /tmp/test_output/legacy_final.csv
 ```
@@ -1829,19 +1829,19 @@ python -m scrapesuite.foundry crate \
 **Test 40: Help Commands**
 ```bash
 # Main help
-python -m scrapesuite.foundry --help
+python -m foundry.foundry --help
 
 # Tool-specific help
-python -m scrapesuite.foundry probe --help
-python -m scrapesuite.foundry blueprint --help
-python -m scrapesuite.foundry forge --help
-python -m scrapesuite.foundry polish --help
-python -m scrapesuite.foundry crate --help
+python -m foundry.foundry probe --help
+python -m foundry.foundry blueprint --help
+python -m foundry.foundry forge --help
+python -m foundry.foundry polish --help
+python -m foundry.foundry crate --help
 
 # Legacy CLI help
-python -m scrapesuite.cli --help
-python -m scrapesuite.cli run --help
-python -m scrapesuite.cli state --help
+python -m foundry.cli --help
+python -m foundry.cli run --help
+python -m foundry.cli state --help
 ```
 
 ---
@@ -1871,8 +1871,8 @@ After completing all tests, verify:
 rm -rf /tmp/test_output
 
 # Optional: Reset test state
-python -m scrapesuite.cli reset fda_recalls
-python -m scrapesuite.cli reset test_job
+python -m foundry.cli reset fda_recalls
+python -m foundry.cli reset test_job
 
 # Remove test job files if created
 rm -f jobs/test_*.yml
@@ -1886,21 +1886,21 @@ For rapid validation, run these 5 tests:
 
 ```bash
 # 1. Probe
-python -m scrapesuite.foundry probe --file tests/fixtures/fda_list.html
+python -m foundry.foundry probe --file tests/fixtures/fda_list.html
 
 # 2. Blueprint validate
-python -m scrapesuite.foundry blueprint validate examples/jobs/fda.yml
+python -m foundry.foundry blueprint validate examples/jobs/fda.yml
 
 # 3. Forge extract
-python -m scrapesuite.foundry forge examples/jobs/fda.yml \
+python -m foundry.foundry forge examples/jobs/fda.yml \
   --file tests/fixtures/fda_list.html --output /tmp/quick.jsonl
 
 # 4. Polish dedupe
-python -m scrapesuite.foundry polish /tmp/quick.jsonl \
+python -m foundry.foundry polish /tmp/quick.jsonl \
   --dedupe --output /tmp/quick_clean.jsonl
 
 # 5. Crate export
-python -m scrapesuite.foundry crate /tmp/quick_clean.jsonl /tmp/quick.csv
+python -m foundry.foundry crate /tmp/quick_clean.jsonl /tmp/quick.csv
 
 # Verify: All 5 commands succeed and files are created
 ls -lh /tmp/quick*
@@ -1911,7 +1911,7 @@ ls -lh /tmp/quick*
 ## Troubleshooting
 
 **Issue**: `ModuleNotFoundError`
-- **Fix**: Ensure you're in the scrapesuite directory and have installed requirements
+- **Fix**: Ensure you're in the foundry directory and have installed requirements
 
 **Issue**: `Permission denied` errors
 - **Fix**: Use `/tmp` for test outputs or check directory permissions

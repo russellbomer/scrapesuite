@@ -1,11 +1,11 @@
 # 🚀 First Run - Quick Demo
 
-**See ScrapeSuite in action in 60 seconds.**
+**See Foundry in action in 60 seconds.**
 
 ## Step 1: Run the Example
 
 ```bash
-python -m scrapesuite.cli run examples/jobs/fda.yml --offline --max-items 10
+python -m foundry.cli run examples/jobs/fda.yml --offline --max-items 10
 ```
 
 You should see:
@@ -17,7 +17,7 @@ fda_recalls: 6 new, 3 in batch, next_cursor=acme-foods...
 
 ```bash
 # View job state
-python -m scrapesuite.cli state
+python -m foundry.cli state
 
 # Find the output file
 ls -lh data/cache/fda/
@@ -36,7 +36,7 @@ print(f'\nTotal: {len(df)} records')
 ## Step 3: Create Your Own Job
 
 ```bash
-python -m scrapesuite.cli init
+python -m foundry.cli init
 ```
 
 Follow the prompts to create a job in `jobs/YOUR_JOB.yml`.
@@ -45,10 +45,10 @@ Follow the prompts to create a job in `jobs/YOUR_JOB.yml`.
 
 ```bash
 # Test offline first (uses fixtures if available)
-python -m scrapesuite.cli run jobs/YOUR_JOB.yml --offline
+python -m foundry.cli run jobs/YOUR_JOB.yml --offline
 
 # Then try live mode (careful! hits real URLs)
-python -m scrapesuite.cli run jobs/YOUR_JOB.yml --live --max-items 5
+python -m foundry.cli run jobs/YOUR_JOB.yml --live --max-items 5
 ```
 
 ## What Just Happened?

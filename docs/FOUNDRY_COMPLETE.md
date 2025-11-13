@@ -176,7 +176,7 @@ foundry crate clean_posts.jsonl posts.db --table blog_posts
 
 ### File Structure
 ```
-scrapesuite/
+foundry/
 ├── lib/                    # Core libraries
 │   ├── http.py            # HTTP client
 │   ├── ratelimit.py       # Rate limiting
@@ -241,8 +241,8 @@ docs/                       # Phase completion docs
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/scrapesuite.git
-cd scrapesuite
+git clone https://github.com/yourusername/foundry.git
+cd foundry
 
 # Install dependencies
 pip install -r requirements.txt
@@ -251,7 +251,7 @@ pip install -r requirements.txt
 pytest
 
 # Use the tools
-python -m scrapesuite.foundry --help
+python -m foundry.foundry --help
 ```
 
 ---
@@ -348,7 +348,7 @@ All 5 tools are production-ready with comprehensive testing and documentation.
 ## Get Started
 
 ```bash
-python -m scrapesuite.foundry --help
+python -m foundry.foundry --help
 ```
 
 🎉 **Happy Extracting!** 🎉

@@ -1,6 +1,6 @@
 # Bot Evasion & Legitimate Scraping Techniques
 
-ScrapeSuite implements several **legitimate** techniques to avoid being flagged as a bot while remaining respectful and compliant with website policies.
+Foundry implements several **legitimate** techniques to avoid being flagged as a bot while remaining respectful and compliant with website policies.
 
 ## Why This Matters
 
@@ -12,10 +12,10 @@ Modern websites use bot detection services (Akamai, Cloudflare, PerimeterX, etc.
 
 **Problem**: Generic or missing headers flag requests as non-browser traffic.
 
-**Solution**: ScrapeSuite sends complete, realistic browser headers that vary naturally:
+**Solution**: Foundry sends complete, realistic browser headers that vary naturally:
 
 ```python
-from scrapesuite.http import get_html
+from foundry.http import get_html
 
 # Automatically uses realistic headers with variation
 html = get_html("https://example.com/page")
@@ -61,7 +61,7 @@ html = get_html("https://example.com/article")
 
 **Custom referrer**:
 ```python
-from scrapesuite.http import _build_browser_headers
+from foundry.http import _build_browser_headers
 
 headers = _build_browser_headers(
     "https://example.com/page2",
@@ -76,7 +76,7 @@ headers = _build_browser_headers(
 **Solution**: Reuse sessions to maintain cookies and TCP connections:
 
 ```python
-from scrapesuite.http import create_session, get_html
+from foundry.http import create_session, get_html
 
 # Create persistent session
 session = create_session()
@@ -117,7 +117,7 @@ html = get_html("https://example.com/page")
 **Already implemented** in earlier phases:
 
 ```python
-from scrapesuite.ratelimit import DomainRateLimiter
+from foundry.ratelimit import DomainRateLimiter
 
 # Default: 1 request/second per domain
 limiter = DomainRateLimiter(default_rps=1.0)
@@ -191,7 +191,7 @@ If you need legitimate access, reach out! Many sites offer:
 
 ## Advanced: What We DON'T Handle
 
-ScrapeSuite focuses on **static HTML scraping**. We do NOT handle:
+Foundry focuses on **static HTML scraping**. We do NOT handle:
 
 ❌ **JavaScript-rendered content** (use Playwright/Selenium if needed)  
 ❌ **CAPTCHA solving** (indicates site doesn't want scraping)  
@@ -221,7 +221,7 @@ If you need these, consider:
 
 ## Summary
 
-ScrapeSuite's bot evasion is **ethical and transparent**:
+Foundry's bot evasion is **ethical and transparent**:
 - ✅ We mimic real browsers (not deceive)
 - ✅ We respect rate limits (not circumvent)
 - ✅ We follow robots.txt (not ignore)

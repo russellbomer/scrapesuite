@@ -8,14 +8,14 @@ Phase 5 is complete. The **Crate** export tool enables data export to multiple d
 
 ### 1. Core Components
 
-- **`scrapesuite/tools/crate/base.py`**: Base exporter framework
+- **`foundry/tools/crate/base.py`**: Base exporter framework
   - Abstract `Exporter` class with export() interface
   - `_read_jsonl()` helper for streaming JSONL input
   - Statistics tracking (read/written/failed)
   - `ExporterFactory` for automatic format detection
   - Support for file extensions and connection strings
 
-- **`scrapesuite/tools/crate/exporters.py`**: Concrete exporters
+- **`foundry/tools/crate/exporters.py`**: Concrete exporters
   - **CSVExporter**: CSV file export
     - Automatic header detection from all records
     - Custom delimiter support
@@ -38,7 +38,7 @@ Phase 5 is complete. The **Crate** export tool enables data export to multiple d
   - **PostgreSQLExporter**: Placeholder for future
   - **MySQLExporter**: Placeholder for future
 
-- **`scrapesuite/tools/crate/cli.py`**: Click-based CLI
+- **`foundry/tools/crate/cli.py`**: Click-based CLI
   - `crate` command with options:
     - `--table`: Database table name
     - `--if-exists`: replace/append/fail mode
@@ -92,7 +92,7 @@ Created comprehensive test suite (`tests/test_crate.py`):
 
 ### 4. Integration
 
-- Integrated into `scrapesuite/foundry.py` main CLI
+- Integrated into `foundry/foundry.py` main CLI
 - Complete pipeline: **Probe → Blueprint → Forge → Polish → Crate**
 - All 5 tools operational!
 
@@ -271,14 +271,14 @@ Item 2  | example.com
 ## Files Created
 
 **Created**:
-- `scrapesuite/tools/crate/base.py` (120 LOC)
-- `scrapesuite/tools/crate/exporters.py` (250 LOC)
-- `scrapesuite/tools/crate/cli.py` (105 LOC)
-- `scrapesuite/tools/crate/__init__.py` (15 LOC)
+- `foundry/tools/crate/base.py` (120 LOC)
+- `foundry/tools/crate/exporters.py` (250 LOC)
+- `foundry/tools/crate/cli.py` (105 LOC)
+- `foundry/tools/crate/__init__.py` (15 LOC)
 - `tests/test_crate.py` (410 LOC)
 
 **Modified**:
-- `scrapesuite/foundry.py` (integrated crate command)
+- `foundry/foundry.py` (integrated crate command)
 
 ## Statistics
 

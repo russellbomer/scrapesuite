@@ -1,6 +1,6 @@
 # Troubleshooting Guide
 
-ScrapeSuite includes built-in troubleshooting commands to help diagnose issues.
+Foundry includes built-in troubleshooting commands to help diagnose issues.
 
 ## Quick Diagnostics
 
@@ -9,7 +9,7 @@ ScrapeSuite includes built-in troubleshooting commands to help diagnose issues.
 Before scraping a URL, check if it's allowed:
 
 ```bash
-python -m scrapesuite.cli check-robots https://example.com/page
+python -m foundry.cli check-robots https://example.com/page
 ```
 
 **Output shows:**
@@ -19,14 +19,14 @@ python -m scrapesuite.cli check-robots https://example.com/page
 
 **Example:**
 ```bash
-$ python -m scrapesuite.cli check-robots https://github.com/explore
+$ python -m foundry.cli check-robots https://github.com/explore
 
         Robots.txt Check: github.com
 ┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃ Property    ┃ Value                      ┃
 ┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
 │ URL         │ https://github.com/explore │
-│ User-Agent  │ ScrapeSuite                │
+│ User-Agent  │ Foundry                │
 │ Allowed     │ ✅ YES                     │
 │ Crawl-delay │ 1.0s                       │
 └─────────────┴────────────────────────────┘
@@ -34,7 +34,7 @@ $ python -m scrapesuite.cli check-robots https://github.com/explore
 
 **Custom User-Agent:**
 ```bash
-python -m scrapesuite.cli check-robots https://example.com -ua "MyBot/1.0"
+python -m foundry.cli check-robots https://example.com -ua "MyBot/1.0"
 ```
 
 ---
@@ -44,7 +44,7 @@ python -m scrapesuite.cli check-robots https://example.com -ua "MyBot/1.0"
 Validate a job YAML without running it:
 
 ```bash
-python -m scrapesuite.cli inspect jobs/my_job.yml
+python -m foundry.cli inspect jobs/my_job.yml
 ```
 
 **Shows:**
@@ -55,7 +55,7 @@ python -m scrapesuite.cli inspect jobs/my_job.yml
 
 **Example:**
 ```bash
-$ python -m scrapesuite.cli inspect examples/jobs/fda_advanced.yml
+$ python -m foundry.cli inspect examples/jobs/fda_advanced.yml
 
           Job Inspection: examples/jobs/fda_advanced.yml
 ┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
@@ -80,10 +80,10 @@ See which URLs failed to fetch and why:
 
 ```bash
 # All failed URLs
-python -m scrapesuite.cli failed
+python -m foundry.cli failed
 
 # Failures for specific job
-python -m scrapesuite.cli failed fda_recalls
+python -m foundry.cli failed fda_recalls
 ```
 
 **Shows:**
@@ -94,7 +94,7 @@ python -m scrapesuite.cli failed fda_recalls
 
 **Example:**
 ```bash
-$ python -m scrapesuite.cli failed
+$ python -m foundry.cli failed
 
                   All Failed URLs
 ┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━┓
@@ -114,7 +114,7 @@ Total failed URLs: 2
 View what's cached in SQLite:
 
 ```bash
-python -m scrapesuite.cli cache-info
+python -m foundry.cli cache-info
 ```
 
 **Shows:**
@@ -123,7 +123,7 @@ python -m scrapesuite.cli cache-info
 
 **Example:**
 ```bash
-$ python -m scrapesuite.cli cache-info
+$ python -m foundry.cli cache-info
 
 Cache Information
 
@@ -189,10 +189,10 @@ Error: Unknown parser 'xyz'. Available: fda_list, nws_list, custom_list
 find data/cache -name "*.parquet" -mtime -1
 
 # Check job state
-python -m scrapesuite.cli state
+python -m foundry.cli state
 
 # Inspect configuration
-python -m scrapesuite.cli inspect jobs/your_job.yml
+python -m foundry.cli inspect jobs/your_job.yml
 ```
 
 **Common causes:**
@@ -216,7 +216,7 @@ policy:
 **Fix 2:** Check robots.txt crawl-delay:
 
 ```bash
-python -m scrapesuite.cli check-robots https://example.com
+python -m foundry.cli check-robots https://example.com
 ```
 
 If crawl-delay is 2.0s, use `default_rps: 0.5` (1/2 = 0.5)
@@ -228,7 +228,7 @@ If crawl-delay is 2.0s, use `default_rps: 0.5` (1/2 = 0.5)
 **Symptom:** URL shows ❌ NO when checking
 
 ```bash
-$ python -m scrapesuite.cli check-robots https://reddit.com/r/python
+$ python -m foundry.cli check-robots https://reddit.com/r/python
 ⚠️  This URL is disallowed by robots.txt
 ```
 
@@ -244,7 +244,7 @@ $ python -m scrapesuite.cli check-robots https://reddit.com/r/python
 **Symptom:** Same URL failing repeatedly
 
 ```bash
-python -m scrapesuite.cli failed
+python -m foundry.cli failed
 # Shows: example.com/page - Retries: 15
 ```
 
@@ -262,11 +262,11 @@ Run with verbose output:
 
 ```bash
 # Run and see detailed timing
-python -m scrapesuite.cli run jobs/my_job.yml --offline -n 5
+python -m foundry.cli run jobs/my_job.yml --offline -n 5
 
 # Check state immediately after
-python -m scrapesuite.cli state
-python -m scrapesuite.cli failed my_job
+python -m foundry.cli state
+python -m foundry.cli failed my_job
 ```
 
 ---
@@ -294,16 +294,16 @@ rm -rf data/cache/*/
 
 ## Getting More Help
 
-1. **Inspect your job:** `python -m scrapesuite.cli inspect jobs/your_job.yml`
-2. **Check robots.txt:** `python -m scrapesuite.cli check-robots YOUR_URL`
-3. **View failures:** `python -m scrapesuite.cli failed`
-4. **Check cache:** `python -m scrapesuite.cli cache-info`
+1. **Inspect your job:** `python -m foundry.cli inspect jobs/your_job.yml`
+2. **Check robots.txt:** `python -m foundry.cli check-robots YOUR_URL`
+3. **View failures:** `python -m foundry.cli failed`
+4. **Check cache:** `python -m foundry.cli cache-info`
 5. **Read the logs:** Output shows success/failure for each run
 
 All commands have `--help`:
 
 ```bash
-python -m scrapesuite.cli check-robots --help
-python -m scrapesuite.cli inspect --help
-python -m scrapesuite.cli failed --help
+python -m foundry.cli check-robots --help
+python -m foundry.cli inspect --help
+python -m foundry.cli failed --help
 ```

@@ -1,10 +1,10 @@
-# ScrapeSuite Architecture & Limitations
+# Foundry Architecture & Limitations
 
 ## **Current Reality: Hard-Coded Parsers**
 
 ### What Actually Works Today
 
-ScrapeSuite currently has **3 hand-coded parsers** that work because we wrote custom code for each site:
+Foundry currently has **3 hand-coded parsers** that work because we wrote custom code for each site:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -322,7 +322,7 @@ Site: Product Hunt
 ## **Recommendation for Product Positioning**
 
 ### Option A: **Positioned as "Template Library"**
-> "ScrapeSuite: Pre-built connectors for common data sources (FDA, NWS, etc.) + framework for adding your own"
+> "Foundry: Pre-built connectors for common data sources (FDA, NWS, etc.) + framework for adding your own"
 
 - ✅ Honest about limitations
 - ✅ Shows off working examples
@@ -330,7 +330,7 @@ Site: Product Hunt
 - ❌ Limited market appeal
 
 ### Option B: **Add YAML Selectors (1 week work)**
-> "ScrapeSuite: Define scraping jobs in YAML - no code required"
+> "Foundry: Define scraping jobs in YAML - no code required"
 
 - ✅ Much broader appeal
 - ✅ Competitive with Scrapy
@@ -338,7 +338,7 @@ Site: Product Hunt
 - ⏰ Requires 1 week implementation
 
 ### Option C: **Current State + Better Docs**
-> "ScrapeSuite: Production-grade scraping framework with offline testing, rate limiting, and state management"
+> "Foundry: Production-grade scraping framework with offline testing, rate limiting, and state management"
 
 - ✅ Emphasizes strong features (robots.txt, rate limits, state)
 - ✅ Honest about connector limitations
@@ -378,7 +378,7 @@ This gives you something **sellable today** while building toward a more powerfu
 
 ### Framework Detection Performance
 
-ScrapeSuite's framework detection is highly optimized for production use:
+Foundry's framework detection is highly optimized for production use:
 
 ```
 Average Performance (measured on test fixtures):

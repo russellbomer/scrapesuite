@@ -3,8 +3,8 @@
 ## 🚀 Run the Wizard
 
 ```bash
-cd /workspaces/scrapesuite
-python -m scrapesuite wizard
+cd /workspaces/foundry
+python -m foundry wizard
 ```
 
 ## 📋 What to Provide
@@ -85,7 +85,7 @@ Examples: Amazon, eBay, product listings
 
 ```bash
 # Run the generated job
-python -m scrapesuite run jobs/YOUR_JOB_NAME.yml
+python -m foundry run jobs/YOUR_JOB_NAME.yml
 
 # Check output
 ls -lh data/cache/custom/
