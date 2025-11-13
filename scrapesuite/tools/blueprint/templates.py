@@ -291,6 +291,334 @@ TEMPLATES = {
             ),
         }
     },
+    
+    # Business Intelligence Templates
+    
+    "financial_data": {
+        "name": "Financial Data",
+        "description": "Extract financial metrics, stock data, or market information",
+        "common_selectors": [".stock", ".ticker", ".financial-data", "tr.data-row"],
+        "fields": {
+            "symbol": FieldSchema(
+                selector=".symbol, .ticker, .stock-symbol",
+                required=True
+            ),
+            "company_name": FieldSchema(
+                selector=".name, .company, h3",
+                required=False
+            ),
+            "price": FieldSchema(
+                selector=".price, .current-price, .last-price",
+                required=True
+            ),
+            "change": FieldSchema(
+                selector=".change, .price-change",
+                required=False
+            ),
+            "change_percent": FieldSchema(
+                selector=".change-percent, .percent-change",
+                required=False
+            ),
+            "volume": FieldSchema(
+                selector=".volume, .trading-volume",
+                required=False
+            ),
+            "market_cap": FieldSchema(
+                selector=".market-cap, .cap, .capitalization",
+                required=False
+            ),
+            "timestamp": FieldSchema(
+                selector="time, .timestamp, .updated",
+                attribute="datetime",
+                required=False
+            ),
+        }
+    },
+    
+    "real_estate": {
+        "name": "Real Estate Listing",
+        "description": "Extract property listings and real estate data",
+        "common_selectors": [".property", ".listing", ".real-estate-item", "article.property"],
+        "fields": {
+            "address": FieldSchema(
+                selector=".address, .location, .property-address",
+                required=True
+            ),
+            "price": FieldSchema(
+                selector=".price, .asking-price, .list-price",
+                required=True
+            ),
+            "bedrooms": FieldSchema(
+                selector=".beds, .bedrooms, .bed-count",
+                required=False
+            ),
+            "bathrooms": FieldSchema(
+                selector=".baths, .bathrooms, .bath-count",
+                required=False
+            ),
+            "square_feet": FieldSchema(
+                selector=".sqft, .square-feet, .area",
+                required=False
+            ),
+            "property_type": FieldSchema(
+                selector=".type, .property-type, .category",
+                required=False
+            ),
+            "image": FieldSchema(
+                selector="img",
+                attribute="src",
+                required=False
+            ),
+            "link": FieldSchema(
+                selector="a",
+                attribute="href",
+                required=False
+            ),
+            "listing_date": FieldSchema(
+                selector="time, .date, .listed",
+                attribute="datetime",
+                required=False
+            ),
+            "agent": FieldSchema(
+                selector=".agent, .broker, .listing-agent",
+                required=False
+            ),
+        }
+    },
+    
+    "company_directory": {
+        "name": "Company Directory",
+        "description": "Extract company listings, business directories, or vendor catalogs",
+        "common_selectors": [".company", ".business", ".vendor", ".directory-item"],
+        "fields": {
+            "company_name": FieldSchema(
+                selector="h2, h3, .name, .company-name",
+                required=True
+            ),
+            "industry": FieldSchema(
+                selector=".industry, .sector, .category",
+                required=False
+            ),
+            "location": FieldSchema(
+                selector=".location, .address, .city",
+                required=False
+            ),
+            "website": FieldSchema(
+                selector="a.website, a[href^='http']",
+                attribute="href",
+                required=False
+            ),
+            "phone": FieldSchema(
+                selector=".phone, .tel, a[href^='tel:']",
+                required=False
+            ),
+            "email": FieldSchema(
+                selector="a[href^='mailto:']",
+                attribute="href",
+                required=False
+            ),
+            "description": FieldSchema(
+                selector="p, .description, .about",
+                required=False
+            ),
+            "employees": FieldSchema(
+                selector=".employees, .headcount, .size",
+                required=False
+            ),
+            "founded": FieldSchema(
+                selector=".founded, .established, .year",
+                required=False
+            ),
+            "revenue": FieldSchema(
+                selector=".revenue, .sales, .annual-revenue",
+                required=False
+            ),
+        }
+    },
+    
+    "analytics_metrics": {
+        "name": "Analytics/Metrics Dashboard",
+        "description": "Extract KPIs, metrics, and performance indicators",
+        "common_selectors": [".metric", ".kpi", ".stat", ".analytics-item", "tr.metric-row"],
+        "fields": {
+            "metric_name": FieldSchema(
+                selector=".name, .label, .metric-name, th",
+                required=True
+            ),
+            "value": FieldSchema(
+                selector=".value, .number, .metric-value, td",
+                required=True
+            ),
+            "unit": FieldSchema(
+                selector=".unit, .metric-unit",
+                required=False
+            ),
+            "change": FieldSchema(
+                selector=".change, .delta, .variance",
+                required=False
+            ),
+            "trend": FieldSchema(
+                selector=".trend, .direction, .arrow",
+                required=False
+            ),
+            "period": FieldSchema(
+                selector=".period, .timeframe, .date-range",
+                required=False
+            ),
+            "target": FieldSchema(
+                selector=".target, .goal, .benchmark",
+                required=False
+            ),
+            "category": FieldSchema(
+                selector=".category, .type, .group",
+                required=False
+            ),
+        }
+    },
+    
+    "competitive_intel": {
+        "name": "Competitive Intelligence",
+        "description": "Extract competitor data, pricing, and market intelligence",
+        "common_selectors": [".competitor", ".comparison-row", "tr.product-row"],
+        "fields": {
+            "competitor_name": FieldSchema(
+                selector=".name, .company, .brand, th",
+                required=True
+            ),
+            "product_name": FieldSchema(
+                selector=".product, .product-name, h3",
+                required=False
+            ),
+            "price": FieldSchema(
+                selector=".price, .cost, .pricing",
+                required=False
+            ),
+            "features": FieldSchema(
+                selector=".features, .specs, .capabilities",
+                required=False
+            ),
+            "market_share": FieldSchema(
+                selector=".market-share, .share, .percentage",
+                required=False
+            ),
+            "rating": FieldSchema(
+                selector=".rating, .score, .stars",
+                required=False
+            ),
+            "strengths": FieldSchema(
+                selector=".strengths, .pros, .advantages",
+                required=False
+            ),
+            "weaknesses": FieldSchema(
+                selector=".weaknesses, .cons, .disadvantages",
+                required=False
+            ),
+            "website": FieldSchema(
+                selector="a.website",
+                attribute="href",
+                required=False
+            ),
+        }
+    },
+    
+    "supply_chain": {
+        "name": "Supply Chain/Inventory",
+        "description": "Extract inventory, shipments, or supply chain data",
+        "common_selectors": [".inventory-item", ".shipment", "tr.sku-row", ".product-row"],
+        "fields": {
+            "sku": FieldSchema(
+                selector=".sku, .product-id, .item-number",
+                required=True
+            ),
+            "product_name": FieldSchema(
+                selector=".name, .product-name, .description",
+                required=True
+            ),
+            "quantity": FieldSchema(
+                selector=".quantity, .qty, .stock",
+                required=False
+            ),
+            "unit_cost": FieldSchema(
+                selector=".cost, .unit-cost, .price",
+                required=False
+            ),
+            "supplier": FieldSchema(
+                selector=".supplier, .vendor, .manufacturer",
+                required=False
+            ),
+            "location": FieldSchema(
+                selector=".location, .warehouse, .facility",
+                required=False
+            ),
+            "status": FieldSchema(
+                selector=".status, .state, .availability",
+                required=False
+            ),
+            "lead_time": FieldSchema(
+                selector=".lead-time, .delivery-time, .eta",
+                required=False
+            ),
+            "last_updated": FieldSchema(
+                selector="time, .updated, .timestamp",
+                attribute="datetime",
+                required=False
+            ),
+        }
+    },
+    
+    "sales_leads": {
+        "name": "Sales Leads/Prospects",
+        "description": "Extract sales leads, prospects, or customer data",
+        "common_selectors": [".lead", ".prospect", ".contact", "tr.lead-row"],
+        "fields": {
+            "company_name": FieldSchema(
+                selector=".company, .organization, .business-name",
+                required=True
+            ),
+            "contact_name": FieldSchema(
+                selector=".name, .contact-name, .full-name",
+                required=False
+            ),
+            "title": FieldSchema(
+                selector=".title, .position, .role",
+                required=False
+            ),
+            "email": FieldSchema(
+                selector="a[href^='mailto:'], .email",
+                attribute="href",
+                required=False
+            ),
+            "phone": FieldSchema(
+                selector=".phone, .tel, a[href^='tel:']",
+                required=False
+            ),
+            "industry": FieldSchema(
+                selector=".industry, .sector, .vertical",
+                required=False
+            ),
+            "company_size": FieldSchema(
+                selector=".size, .employees, .headcount",
+                required=False
+            ),
+            "revenue": FieldSchema(
+                selector=".revenue, .annual-revenue",
+                required=False
+            ),
+            "location": FieldSchema(
+                selector=".location, .city, .region",
+                required=False
+            ),
+            "lead_score": FieldSchema(
+                selector=".score, .lead-score, .rating",
+                required=False
+            ),
+            "website": FieldSchema(
+                selector="a.website",
+                attribute="href",
+                required=False
+            ),
+        }
+    },
 }
 
 
