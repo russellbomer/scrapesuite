@@ -19,6 +19,12 @@ dependencies = [
     "rich",
 ]
 
+[tool.setuptools]
+packages = ["scrapesuite"]
+
+[tool.setuptools.package-data]
+scrapesuite = ["**/*.json", "**/*.yml", "**/*.yaml"]
+
 [tool.ruff]
 line-length = 100
 
