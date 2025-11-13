@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import click
+import questionary
 
 from foundry.lib.http import get_html
 from .analyzer import analyze_page
@@ -38,7 +39,13 @@ from .reporter import format_as_json, format_as_terminal
     is_flag=True,
     help="Show guide for finding API endpoints (infinite scroll sites)"
 )
-def probe(url_or_file, file, output, format, pretty, find_api):
+@click.option(
+    "--batch/--interactive",
+    "batch_mode",
+    default=False,
+    help="Batch mode (skip prompts, fail if arguments missing)"
+)
+def probe(url_or_file, file, output, format, pretty, find_api, batch_mode):
     """
     Analyze HTML structure and detect patterns.
     
@@ -51,10 +58,15 @@ def probe(url_or_file, file, output, format, pretty, find_api):
     • Extraction suggestions
     
     \b
-    Examples:
+    Interactive Mode (default):
+      foundry probe
+      → Prompts for URL or file path
+    
+    \b
+    Batch Mode (with arguments):
       foundry probe https://news.ycombinator.com
       foundry probe --file page.html --format json
-      foundry probe https://github.com --output analysis.json
+      foundry probe https://github.com --output analysis.json --batch
       foundry probe --find-api  # Guide for infinite scroll sites
     """
     
@@ -63,6 +75,62 @@ def probe(url_or_file, file, output, format, pretty, find_api):
         from .api_guide import show_api_guide
         show_api_guide()
         return
+    
+    # Interactive mode: prompt for missing values
+    if not batch_mode and not url_or_file and not file:
+        click.echo("🔍 Foundry Probe - Interactive Mode\n", err=True)
+        
+        # Prompt for source type
+        source_type = questionary.select(
+            "Analyze:",
+            choices=["URL", "Local file"]
+        ).ask()
+        
+        if not source_type:
+            click.echo("Cancelled", err=True)
+            sys.exit(0)
+        
+        if source_type == "URL":
+            url_or_file = questionary.text(
+                "Enter URL:",
+                validate=lambda x: (x.startswith("http://") or x.startswith("https://")) or "URL must start with http:// or https://"
+            ).ask()
+            if not url_or_file:
+                sys.exit(0)
+        else:  # Local file
+            file = questionary.path(
+                "HTML file path:",
+                only_files=True,
+                validate=lambda x: Path(x).exists() or "File does not exist"
+            ).ask()
+            if not file:
+                sys.exit(0)
+        
+        # Ask about output
+        save_output = questionary.confirm(
+            "Save results to file?",
+            default=False
+        ).ask()
+        
+        if save_output:
+            output = questionary.text(
+                "Output file:",
+                default="probe_analysis.json"
+            ).ask()
+            
+            if output:
+                # Suggest JSON format if saving
+                format = questionary.select(
+                    "Output format:",
+                    choices=["json", "terminal"],
+                    default="json"
+                ).ask() or "json"
+    
+    # Validate required arguments in batch mode
+    if not url_or_file and not file:
+        click.echo("Error: Provide a URL or use --file option", err=True)
+        sys.exit(1)
+    
     # Determine source
     if file:
         html_source = Path(file)
@@ -79,7 +147,8 @@ def probe(url_or_file, file, output, format, pretty, find_api):
             url = None
             click.echo(f"📄 Analyzing file: {url_or_file}", err=True)
     else:
-        click.echo("Error: Provide a URL or use --file option", err=True)
+        # Should not reach here due to validation above
+        click.echo("Error: No source specified", err=True)
         sys.exit(1)
     
     # Get HTML

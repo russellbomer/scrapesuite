@@ -1,14 +1,17 @@
 """CLI for Crate export tool."""
 
 import sys
+from pathlib import Path
+
 import click
+import questionary
 
 from .base import ExporterFactory
 
 
 @click.command()
-@click.argument("input_file", type=click.Path(exists=True))
-@click.argument("destination")
+@click.argument("input_file", type=click.Path(exists=True), required=False)
+@click.argument("destination", required=False)
 @click.option(
     "--table",
     help="Table name for database exports (default: 'records')"
@@ -39,7 +42,13 @@ from .base import ExporterFactory
     is_flag=True,
     help="Show detailed statistics"
 )
-def crate(input_file, destination, table, if_exists, delimiter, pretty, exclude_meta, stats):
+@click.option(
+    "--batch/--interactive",
+    "batch_mode",
+    default=False,
+    help="Batch mode (skip prompts, fail if arguments missing)"
+)
+def crate(input_file, destination, table, if_exists, delimiter, pretty, exclude_meta, stats, batch_mode):
     """
     Package and export data to various destinations.
     
@@ -47,11 +56,15 @@ def crate(input_file, destination, table, if_exists, delimiter, pretty, exclude_
     It automatically detects the format from the destination.
     
     \b
-    Examples:
+    Interactive Mode (default):
+      foundry crate
+      → Prompts for input file and export format
+    
+    \b
+    Batch Mode (with arguments):
       foundry crate data.jsonl output.csv
-      foundry crate data.jsonl output.json --pretty
+      foundry crate data.jsonl output.json --pretty --batch
       foundry crate data.jsonl data.db --table products
-      foundry crate data.jsonl sqlite://data.db --table records
       foundry crate data.jsonl output.csv --delimiter "|"
     
     \b
@@ -59,9 +72,81 @@ def crate(input_file, destination, table, if_exists, delimiter, pretty, exclude_
       • CSV files (.csv)
       • JSON files (.json)
       • SQLite databases (.db, .sqlite, sqlite://)
-      • PostgreSQL (coming soon)
-      • MySQL (coming soon)
+      • Parquet files (.parquet)
     """
+    
+    # Interactive mode: prompt for missing values
+    if not batch_mode and not input_file:
+        click.echo("📦 Foundry Crate - Interactive Mode\n", err=True)
+        
+        # Prompt for input file
+        input_file = questionary.path(
+            "Input file (JSONL):",
+            only_files=True,
+            validate=lambda x: Path(x).exists() or "File does not exist"
+        ).ask()
+        
+        if not input_file:
+            click.echo("Cancelled", err=True)
+            sys.exit(0)
+    
+    if not batch_mode and not destination:
+        # Prompt for export format
+        format_choice = questionary.select(
+            "Export format:",
+            choices=[
+                "CSV",
+                "JSON",
+                "SQLite database",
+                "Parquet"
+            ]
+        ).ask()
+        
+        if not format_choice:
+            click.echo("Cancelled", err=True)
+            sys.exit(0)
+        
+        # Get default filename based on input
+        input_path = Path(input_file)
+        
+        if format_choice == "CSV":
+            default_dest = str(input_path.with_suffix(".csv"))
+        elif format_choice == "JSON":
+            default_dest = str(input_path.with_suffix(".json"))
+            pretty = questionary.confirm(
+                "Pretty-print JSON?",
+                default=True
+            ).ask()
+        elif format_choice == "SQLite database":
+            default_dest = str(input_path.with_suffix(".db"))
+            table = questionary.text(
+                "Table name:",
+                default="records"
+            ).ask()
+        else:  # Parquet
+            default_dest = str(input_path.with_suffix(".parquet"))
+        
+        # Prompt for destination
+        destination = questionary.text(
+            "Output destination:",
+            default=default_dest
+        ).ask()
+        
+        if not destination:
+            click.echo("Cancelled", err=True)
+            sys.exit(0)
+        
+        # Ask about metadata
+        exclude_meta = questionary.confirm(
+            "Exclude _meta field from export?",
+            default=True
+        ).ask()
+    
+    # Validate required arguments in batch mode
+    if not input_file or not destination:
+        click.echo("Error: Input file and destination required", err=True)
+        sys.exit(1)
+    
     click.echo(f"📦 Exporting {input_file} to {destination}...", err=True)
     
     # Build options
