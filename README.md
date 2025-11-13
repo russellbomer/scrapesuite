@@ -1,40 +1,68 @@
-# Quarry
+# Quarry 🪨⛏️
 
 **A modern, production-ready Python toolkit for web data extraction, transformation, and export.**
 
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-197%20passing-success.svg)](./tests/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Tests](https://img.shields.io/badge/tests-199%20passing-success.svg)](./tests/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Version](https://img.shields.io/badge/version-2.0.0-green.svg)](https://github.com/russellbomer/quarry)
 
 ---
 
 ## 🌟 Overview
 
-Quarry combines **two powerful toolkits** for different web scraping workflows:
+**Quarry** is a complete web scraping suite built around a **mining metaphor**:
 
-1. **🧙 Legacy Wizard Suite** - YAML-driven declarative scraping with interactive job generation
-2. **⚒️ Quarry Suite** - Modern command-line tools for extraction pipelines
+```
+Scout → Survey → Excavate → Polish → Ship
+```
 
-Choose the approach that fits your workflow, or use both together!
+Discover sites, map structures, extract data, refine results, and export anywhere.
+
+**Two powerful approaches:**
+1. **⚒️ Quarry Tools** - Interactive CLI pipeline (scout, survey, excavate, polish, ship)
+2. **🧙 Legacy Wizard** - YAML-driven declarative scraping with 15+ built-in templates
+
+Choose the workflow that fits your needs, or combine both!
 
 ---
 
 ## 🚀 Quick Start
 
+### Installation
+
 ```bash
-# Clone and install
+# Install from PyPI (recommended)
+pip install quarry
+
+# Or install from source
 git clone https://github.com/russellbomer/quarry.git
 cd quarry
-pip install -r requirements.txt
-
-# Option 1: Use the Wizard (guided scraper creation)
-quarry init
-
-# Option 2: Use Quarry tools (command-line pipeline)
-quarry scout https://example.com
+pip install -e .
 ```
 
-**Requirements**: Python 3.12+
+**Requirements**: Python 3.11+ (3.12 recommended)
+
+📖 **Full installation guide**: [INSTALLATION.md](INSTALLATION.md)
+
+### First Extraction (Interactive)
+
+```bash
+# Analyze a webpage
+quarry.scout https://example.com
+
+# Create extraction schema (guided)
+quarry.survey create
+
+# Extract data (prompted for URL)
+quarry.excavate schema.yml
+
+# Clean & export
+quarry.polish output.jsonl --dedupe
+quarry.ship output_polished.jsonl results.csv
+```
+
+📚 **Complete usage guide**: [USAGE_GUIDE.md](USAGE_GUIDE.md)
 
 ---
 
