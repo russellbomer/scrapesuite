@@ -5,7 +5,7 @@ from typing import Any
 
 from bs4 import BeautifulSoup, Tag
 
-from scrapesuite.framework_profiles import detect_all_frameworks, _get_element_classes
+from scrapesuite.framework_profiles import _get_element_classes, detect_all_frameworks
 from scrapesuite.lib.selectors import build_robust_selector
 
 
@@ -108,8 +108,61 @@ def _find_containers(soup: BeautifulSoup) -> list[dict[str, Any]]:
     """Find container elements with repeated children (likely item lists)."""
     containers = []
     
-    for container_tag in ["div", "section", "article", "ul", "ol", "table", "tbody"]:
+    # Blacklist of common boilerplate selectors/classes that should be deprioritized
+    BOILERPLATE_PATTERNS = [
+        'header', 'footer', 'nav', 'navigation', 'menu', 'sidebar', 
+        'breadcrumb', 'cookie', 'banner', 'ad', 'advertisement',
+        'social', 'share', 'toolbar', 'utility', 'meta', 'promo',
+        'related', 'widget', 'plugin', 'tracking'
+    ]
+    
+    # Prioritize content containers
+    CONTENT_PATTERNS = [
+        'article', 'post', 'story', 'item', 'card', 'entry', 'product',
+        'result', 'listing', 'content', 'main', 'feed', 'list'
+    ]
+    
+    def is_boilerplate(element: Tag) -> bool:
+        """Check if element is likely boilerplate."""
+        classes = _get_element_classes(element).lower()
+        elem_id = (element.get("id") or "").lower()
+        combined = f"{classes} {elem_id}"
+        
+        return any(pattern in combined for pattern in BOILERPLATE_PATTERNS)
+    
+    def is_content_container(element: Tag) -> bool:
+        """Check if element is likely a content container."""
+        classes = _get_element_classes(element).lower()
+        elem_id = (element.get("id") or "").lower()
+        combined = f"{classes} {elem_id}"
+        
+        return any(pattern in combined for pattern in CONTENT_PATTERNS)
+    
+    def has_meaningful_content(element: Tag) -> bool:
+        """Check if child has substantial text content (not just links/buttons)."""
+        text = element.get_text(strip=True)
+        # Check for substantial text (more than just a few words)
+        if len(text) < 20:
+            return False
+        
+        # Check for presence of headings or paragraphs
+        if element.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p']):
+            return True
+        
+        # Check text to link ratio
+        links = element.find_all('a')
+        link_text = sum(len(a.get_text(strip=True)) for a in links)
+        if link_text > 0 and len(text) / link_text > 2:
+            return True
+        
+        return len(text) > 50
+    
+    for container_tag in ["div", "section", "article", "ul", "ol", "main", "aside"]:
         for container in soup.find_all(container_tag):
+            # Skip obvious boilerplate
+            if is_boilerplate(container):
+                continue
+            
             children = list(container.find_all(recursive=False))
             
             if len(children) >= 3:  # At least 3 items
@@ -123,12 +176,41 @@ def _find_containers(soup: BeautifulSoup) -> list[dict[str, Any]]:
                 
                 # If most children share same tag, it's a good container
                 if count >= 3:
+                    # Get the actual children with that tag
+                    similar_children = [c for c in children if hasattr(c, 'name') and c.name == most_common_tag]
+                    
+                    # Filter out if children don't have meaningful content
+                    meaningful_children = [c for c in similar_children if has_meaningful_content(c)]
+                    if len(meaningful_children) < 3:
+                        continue
+                    
                     selector = build_robust_selector(container)
                     child_selector = f"{selector} > {most_common_tag}"
                     
-                    # Get sample text from first child
-                    sample_child = next((c for c in children if hasattr(c, 'name') and c.name == most_common_tag), None)
+                    # Get sample text from first meaningful child
+                    sample_child = meaningful_children[0] if meaningful_children else None
                     sample_text = sample_child.get_text(strip=True)[:100] if sample_child else ""
+                    
+                    # Calculate content score for ranking
+                    content_score = 0
+                    if is_content_container(container):
+                        content_score += 50
+                    
+                    # Bonus for semantic tags
+                    if container.name in ['article', 'section', 'main']:
+                        content_score += 30
+                    if most_common_tag in ['article', 'li', 'div']:
+                        content_score += 20
+                    
+                    # Bonus for having links (articles usually link to detail pages)
+                    avg_links = sum(1 for c in meaningful_children if c.find('a')) / len(meaningful_children)
+                    if avg_links > 0.5:
+                        content_score += 20
+                    
+                    # Bonus for having images (articles often have featured images)
+                    avg_images = sum(1 for c in meaningful_children if c.find('img')) / len(meaningful_children)
+                    if avg_images > 0.3:
+                        content_score += 15
                     
                     containers.append({
                         "selector": selector,
@@ -139,10 +221,12 @@ def _find_containers(soup: BeautifulSoup) -> list[dict[str, Any]]:
                         "sample_text": sample_text,
                         "container_class": _get_element_classes(container),
                         "container_id": container.get("id"),
+                        "content_score": content_score,
+                        "is_content": is_content_container(container),
                     })
     
-    # Sort by item count (most items first)
-    containers.sort(key=lambda x: x["item_count"], reverse=True)
+    # Sort by content score first, then item count
+    containers.sort(key=lambda x: (x["content_score"], x["item_count"]), reverse=True)
     
     # Return top 10
     return containers[:10]
@@ -277,36 +361,112 @@ def _generate_suggestions(soup: BeautifulSoup, containers: list[dict], framework
 def _suggest_fields(item: Tag) -> list[dict[str, str]]:
     """Suggest field selectors within an item."""
     fields = []
+    seen_selectors = set()  # Avoid duplicates
     
-    # Find common field patterns
+    # Enhanced field patterns with more comprehensive selectors
     patterns = [
-        ("title", ["h1", "h2", "h3", "h4", ".title", ".heading", ".name"]),
-        ("link", ["a[href]"]),
-        ("image", ["img[src]"]),
-        ("description", [".description", ".summary", ".excerpt", "p"]),
-        ("date", ["time", ".date", ".published", ".timestamp"]),
-        ("author", [".author", ".by", ".username"]),
-        ("price", [".price", ".cost", ".amount"]),
-        ("category", [".category", ".tag", ".label"]),
+        ("title", [
+            "h1", "h2", "h3", "h4", 
+            ".title", ".headline", ".heading", ".name", ".card-title",
+            "a.title", "a.headline"
+        ]),
+        ("link", [
+            "a[href]", 
+            "h1 a", "h2 a", "h3 a",  # Links in headings
+            ".title a", ".headline a"
+        ]),
+        ("image", [
+            "img[src]", 
+            "picture img", 
+            ".thumbnail img", ".featured-image img", ".card-img"
+        ]),
+        ("description", [
+            "p", 
+            ".description", ".summary", ".excerpt", ".lead", ".snippet",
+            ".card-text", ".body", ".content"
+        ]),
+        ("date", [
+            "time", "time[datetime]",
+            ".date", ".published", ".timestamp", ".pubdate",
+            ".post-date", ".article-date"
+        ]),
+        ("author", [
+            ".author", ".byline", ".by", ".username", ".writer",
+            "address", ".author-name"
+        ]),
+        ("price", [
+            ".price", ".cost", ".amount", ".value",
+            ".sale-price", ".current-price"
+        ]),
+        ("category", [
+            ".category", ".tag", ".label", ".section", ".topic",
+            ".post-category"
+        ]),
     ]
     
+    # Try each field pattern
     for field_name, selectors in patterns:
         for selector in selectors:
             try:
                 elements = item.select(selector)
                 if elements:
-                    # Found a match
                     elem = elements[0]
-                    sample = elem.get_text(strip=True)[:50]
+                    
+                    # Skip if we've already found this selector
+                    if selector in seen_selectors:
+                        continue
+                    
+                    # Get sample text or attribute
+                    sample = ""
+                    attribute = None
+                    
+                    if field_name == "link":
+                        sample = elem.get("href", "")
+                        attribute = "href"
+                    elif field_name == "image":
+                        sample = elem.get("src", "")
+                        attribute = "src"
+                    elif field_name == "date" and elem.get("datetime"):
+                        sample = elem.get("datetime", "")
+                        attribute = "datetime"
+                    else:
+                        sample = elem.get_text(strip=True)
+                    
+                    # Skip if sample is empty or too short
+                    if not sample or len(sample.strip()) < 2:
+                        continue
+                    
+                    # Truncate sample
+                    sample = sample[:50]
+                    
                     fields.append({
                         "name": field_name,
                         "selector": selector,
                         "sample": sample,
                         "count": len(elements),
+                        "attribute": attribute,
                     })
+                    
+                    seen_selectors.add(selector)
                     break  # Only one match per field type
             except Exception:
                 continue
+    
+    # Also try to find any links not yet captured
+    if not any(f["name"] == "link" for f in fields):
+        links = item.find_all("a", href=True, limit=3)
+        for idx, link in enumerate(links):
+            href = link.get("href", "")
+            if href and not href.startswith("#"):
+                selector = "a" if idx == 0 else f"a:nth-of-type({idx + 1})"
+                fields.append({
+                    "name": f"link_{idx + 1}" if idx > 0 else "link",
+                    "selector": selector,
+                    "sample": href[:50],
+                    "count": 1,
+                    "attribute": "href",
+                })
+                break
     
     return fields
 
