@@ -34,43 +34,62 @@ def format_as_terminal(analysis: dict[str, Any]) -> str:
         from rich.console import Console
         from rich.panel import Panel
         from rich.table import Table
+        from rich.text import Text
         from rich import box
-        
-        console = Console()
         
         # Create output buffer
         from io import StringIO
         output = StringIO()
-        console = Console(file=output, width=120)
+        console = Console(file=output, width=120, force_terminal=True)
         
-        # Header
-        url = analysis.get("url", "Unknown")
-        console.print(f"\n[bold cyan]🔍 Probe Analysis Results[/bold cyan]")
+        # Header with elegant spacing
+        url = analysis.get("url", "")
+        console.print()
+        console.print("╭─────────────────────────────────────────────────────────────╮", style="cyan")
+        console.print("│ [bold cyan]🔍  PROBE ANALYSIS[/bold cyan]                                      │", style="cyan")
+        console.print("╰─────────────────────────────────────────────────────────────╯", style="cyan")
+        
         if url:
-            console.print(f"[dim]URL: {url}[/dim]\n")
+            console.print(f"[dim]📍 {url}[/dim]")
+        console.print()
         
         # Metadata section
         metadata = analysis.get("metadata", {})
         if metadata.get("title"):
+            title_text = metadata["title"]
+            desc_text = metadata.get("description", "")
+            
+            content = f"[bold white]{title_text}[/bold white]"
+            if desc_text:
+                content += f"\n[dim]{desc_text}[/dim]"
+            
             console.print(Panel(
-                f"[bold]{metadata['title']}[/bold]\n"
-                f"{metadata.get('description', '')}",
-                title="Page Metadata",
-                border_style="blue"
+                content,
+                title="[bold]📄 Page Info[/bold]",
+                border_style="blue",
+                padding=(0, 1)
             ))
+            console.print()
         
         # Framework detection
         frameworks = analysis.get("frameworks", [])
         if frameworks:
-            table = Table(title="Detected Frameworks", box=box.ROUNDED, show_header=True)
-            table.add_column("Framework", style="cyan")
-            table.add_column("Confidence", style="green", justify="right")
-            table.add_column("Version", style="yellow")
+            table = Table(
+                title="[bold]🎨 Detected Frameworks[/bold]",
+                box=box.ROUNDED,
+                show_header=True,
+                header_style="bold cyan",
+                border_style="cyan"
+            )
+            table.add_column("Framework", style="cyan bold", no_wrap=True)
+            table.add_column("Confidence", style="green", justify="right", width=12)
+            table.add_column("Version", style="yellow dim", width=15)
             
             for fw in frameworks[:5]:  # Top 5
-                conf_pct = f"{fw['confidence'] * 100:.1f}%"
+                name = fw.get("name", "unknown").title()
+                conf_pct = f"{fw.get('confidence', 0) * 100:.1f}%"
                 version = fw.get("version") or "—"
-                table.add_row(fw["name"], conf_pct, version)
+                table.add_row(name, conf_pct, version)
             
             console.print(table)
             console.print()
@@ -78,68 +97,105 @@ def format_as_terminal(analysis: dict[str, Any]) -> str:
         # Containers (item patterns)
         containers = analysis.get("containers", [])
         if containers:
-            table = Table(title="Detected Item Containers", box=box.ROUNDED, show_header=True)
-            table.add_column("Selector", style="magenta", max_width=50)
-            table.add_column("Items", style="green", justify="right")
-            table.add_column("Sample", style="dim", max_width=40)
+            table = Table(
+                title="[bold]📦 Detected Item Containers[/bold]",
+                box=box.ROUNDED,
+                show_header=True,
+                header_style="bold magenta",
+                border_style="magenta"
+            )
+            table.add_column("CSS Selector", style="magenta", max_width=60, overflow="fold")
+            table.add_column("Count", style="green bold", justify="right", width=8)
+            table.add_column("Sample Text", style="dim", max_width=35, overflow="ellipsis")
             
             for cont in containers[:5]:  # Top 5
-                selector = cont.get("child_selector", cont.get("selector", ""))
+                selector = cont.get("child_selector") or cont.get("selector") or "—"
                 count = str(cont.get("item_count", 0))
-                sample = cont.get("sample_text", "")[:40]
+                sample = cont.get("sample_text", "")
+                # Clean and truncate sample
+                sample = " ".join(sample.split())[:35]
+                
                 table.add_row(selector, count, sample)
             
             console.print(table)
             console.print()
         
-        # Suggestions
+        # Best container suggestion
         suggestions = analysis.get("suggestions", {})
-        if suggestions.get("best_container"):
-            best = suggestions["best_container"]
+        best_container = suggestions.get("best_container")
+        if best_container:
+            selector = best_container.get("child_selector") or best_container.get("selector") or "—"
+            count = best_container.get("item_count", 0)
+            
             console.print(Panel(
-                f"[bold green]✓ Best Container[/bold green]\n"
-                f"Selector: [cyan]{best.get('child_selector')}[/cyan]\n"
-                f"Items: [yellow]{best.get('item_count')}[/yellow]",
-                border_style="green"
+                f"[bold green]✓ Recommended Selector[/bold green]\n\n"
+                f"[cyan]{selector}[/cyan]\n"
+                f"[dim]Found {count} items matching this pattern[/dim]",
+                title="[bold]💡 Best Container[/bold]",
+                border_style="green",
+                padding=(0, 1)
             ))
+            console.print()
         
         # Field suggestions
         field_candidates = suggestions.get("field_candidates", [])
         if field_candidates:
-            table = Table(title="Suggested Fields", box=box.SIMPLE, show_header=True)
-            table.add_column("Field", style="yellow")
-            table.add_column("Selector", style="cyan")
-            table.add_column("Sample", style="dim", max_width=30)
+            table = Table(
+                title="[bold]🏷️  Suggested Fields[/bold]",
+                box=box.SIMPLE,
+                show_header=True,
+                header_style="bold yellow",
+                border_style="yellow"
+            )
+            table.add_column("Field Name", style="yellow bold", width=15)
+            table.add_column("CSS Selector", style="cyan", width=30, overflow="fold")
+            table.add_column("Sample Value", style="white dim", max_width=35, overflow="ellipsis")
             
             for field in field_candidates[:8]:  # Top 8
-                table.add_row(
-                    field.get("name", ""),
-                    field.get("selector", ""),
-                    field.get("sample", "")[:30]
-                )
+                name = field.get("name", "").title()
+                selector = field.get("selector", "")
+                sample = field.get("sample", "")
+                # Clean sample text
+                sample = " ".join(sample.split())[:35]
+                
+                table.add_row(name, selector, sample)
             
             console.print(table)
             console.print()
         
         # Framework hint
-        if suggestions.get("framework_hint"):
-            hint = suggestions["framework_hint"]
+        framework_hint = suggestions.get("framework_hint")
+        if framework_hint:
+            name = framework_hint.get("name", "").title()
+            recommendation = framework_hint.get("recommendation", "")
+            confidence = framework_hint.get("confidence", 0)
+            
+            conf_icon = "🟢" if confidence > 0.7 else "🟡" if confidence > 0.4 else "🟠"
+            
             console.print(Panel(
-                f"[bold]{hint['name']}[/bold] detected\n"
-                f"{hint['recommendation']}",
-                title="💡 Framework Hint",
-                border_style="yellow"
+                f"[bold cyan]{name}[/bold cyan] detected {conf_icon}\n\n"
+                f"[white]{recommendation}[/white]",
+                title="[bold]💡 Framework Recommendation[/bold]",
+                border_style="yellow",
+                padding=(0, 1)
             ))
+            console.print()
         
         # Statistics
         stats = analysis.get("statistics", {})
         if stats:
-            console.print("\n[bold]📊 Page Statistics[/bold]")
-            console.print(f"  Elements: {stats.get('total_elements', 0):,}")
-            console.print(f"  Links: {stats.get('total_links', 0):,}")
-            console.print(f"  Images: {stats.get('total_images', 0):,}")
-            console.print(f"  Text: {stats.get('text_words', 0):,} words\n")
+            console.print(Panel(
+                f"[cyan]●[/cyan] Elements: [bold]{stats.get('total_elements', 0):,}[/bold]\n"
+                f"[cyan]●[/cyan] Links: [bold]{stats.get('total_links', 0):,}[/bold]\n"
+                f"[cyan]●[/cyan] Images: [bold]{stats.get('total_images', 0):,}[/bold]\n"
+                f"[cyan]●[/cyan] Forms: [bold]{stats.get('total_forms', 0):,}[/bold]\n"
+                f"[cyan]●[/cyan] Text: [bold]{stats.get('text_words', 0):,}[/bold] words",
+                title="[bold]📊 Page Statistics[/bold]",
+                border_style="blue",
+                padding=(0, 1)
+            ))
         
+        console.print()
         return output.getvalue()
         
     except ImportError:
