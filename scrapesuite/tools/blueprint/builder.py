@@ -4,9 +4,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+from bs4 import BeautifulSoup
 
 from scrapesuite.lib.http import get_html
 from scrapesuite.lib.schemas import ExtractionSchema, FieldSchema, PaginationSchema
+from scrapesuite.tools.probe.analyzer import analyze_page
 
 
 def build_schema_interactive(
@@ -30,23 +32,31 @@ def build_schema_interactive(
         from rich.prompt import Prompt, Confirm
         from rich.panel import Panel
         from rich.table import Table
+        from rich import box
         
         console = Console()
-        console.print("\n[bold cyan]🔨 Blueprint Builder[/bold cyan]")
+        console.print("\n╭─────────────────────────────────────────────────────────────╮", style="cyan")
+        console.print("│ [bold cyan]BLUEPRINT BUILDER[/bold cyan]                                       │", style="cyan")
+        console.print("╰─────────────────────────────────────────────────────────────╯", style="cyan")
         console.print("[dim]Create an extraction schema interactively[/dim]\n")
     except ImportError:
         # Fallback without rich
         return _build_schema_simple(url, analysis, html)
     
     # Step 1: Schema metadata
-    console.print(Panel("[bold]Step 1: Schema Metadata[/bold]", border_style="cyan"))
+    console.print(Panel(
+        "[bold]Step 1: Schema Metadata[/bold]",
+        title="Schema Info",
+        title_align="left",
+        border_style="cyan"
+    ))
     
     name = Prompt.ask("Schema name", default="extraction")
     description = Prompt.ask("Description (optional)", default="")
     
     # Step 2: Get URL if not provided
     if not url and not html:
-        url = Prompt.ask("Target URL (or leave empty for generic schema)", default="")
+        url = Prompt.ask("\nTarget URL (optional - can analyze later)", default="")
         if url and url.strip():
             console.print(f"[dim]Fetching {url}...[/dim]")
             try:
@@ -55,63 +65,167 @@ def build_schema_interactive(
                 console.print(f"[red]Error fetching URL: {e}[/red]")
                 html = None
     
+    # Run Probe analysis if we have HTML but no analysis
+    if html and not analysis:
+        console.print("\n[dim]Running Probe analysis to detect patterns...[/dim]")
+        try:
+            analysis = analyze_page(html, url=url)
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not analyze page: {e}[/yellow]")
+            analysis = None
+    
     # Step 3: Item selector
-    console.print(Panel("\n[bold]Step 2: Item Selector[/bold]", border_style="cyan"))
-    console.print("This selector identifies each item to extract (e.g., article, product, post)\n")
+    console.print()
+    console.print(Panel(
+        "[bold]Step 2: Item Selector[/bold]\n"
+        "Select the CSS selector that identifies each item to extract\n"
+        "(e.g., article, product card, list item)",
+        title="Item Selector",
+        title_align="left",
+        border_style="cyan"
+    ))
     
     if analysis and analysis.get("containers"):
         # Show suggestions from Probe analysis
-        containers = analysis["containers"][:5]
+        containers = analysis["containers"][:8]
         
-        table = Table(title="Suggested Containers", show_header=True)
-        table.add_column("Option", style="cyan", width=8)
-        table.add_column("Selector", style="yellow")
-        table.add_column("Items", style="green", justify="right")
+        table = Table(
+            title="Detected Containers",
+            title_style="bold",
+            title_justify="left",
+            box=box.ROUNDED,
+            show_header=True,
+            header_style="bold cyan"
+        )
+        table.add_column("#", style="cyan dim", width=4, justify="right")
+        table.add_column("CSS Selector", style="yellow", max_width=50, overflow="fold")
+        table.add_column("Items", style="green bold", justify="right", width=8)
+        table.add_column("Sample", style="dim", max_width=30, overflow="ellipsis")
         
         for idx, container in enumerate(containers, 1):
-            selector = container.get("child_selector", container.get("selector"))
-            count = container.get("item_count", 0)
-            table.add_row(str(idx), selector, str(count))
+            selector = container.get("child_selector") or container.get("selector") or "—"
+            count = str(container.get("item_count", 0))
+            sample = container.get("sample_text", "")
+            sample = " ".join(sample.split())[:30]
+            
+            table.add_row(str(idx), selector, count, sample)
         
         console.print(table)
+        console.print()
         
         choice = Prompt.ask(
-            "\nSelect option or enter custom selector",
+            "Select number or enter custom selector",
             default="1"
         )
         
         if choice.isdigit() and 1 <= int(choice) <= len(containers):
-            item_selector = containers[int(choice) - 1].get("child_selector")
+            item_selector = containers[int(choice) - 1].get("child_selector") or containers[int(choice) - 1].get("selector")
+            console.print(f"[green]✓[/green] Using: [cyan]{item_selector}[/cyan]")
         else:
             item_selector = choice
+            console.print(f"[green]✓[/green] Using custom: [cyan]{item_selector}[/cyan]")
     else:
+        console.print("[yellow]No containers detected. Enter selector manually.[/yellow]\n")
         item_selector = Prompt.ask("Item selector (CSS)", default=".item")
     
     # Step 4: Fields
-    console.print(Panel("\n[bold]Step 3: Fields[/bold]", border_style="cyan"))
-    console.print("Define fields to extract from each item\n")
+    console.print()
+    console.print(Panel(
+        "[bold]Step 3: Fields[/bold]\n"
+        "Define fields to extract from each item",
+        title="Field Definitions",
+        title_align="left",
+        border_style="cyan"
+    ))
     
     fields = {}
     
     # Suggest fields from Probe if available
     suggested_fields = []
     if analysis and analysis.get("suggestions", {}).get("field_candidates"):
-        suggested_fields = analysis["suggestions"]["field_candidates"][:5]
+        suggested_fields = analysis["suggestions"]["field_candidates"][:10]
     
     if suggested_fields:
-        console.print("[dim]Suggested fields from analysis:[/dim]")
+        table = Table(
+            title="Suggested Fields",
+            title_style="bold",
+            title_justify="left",
+            box=box.SIMPLE,
+            show_header=True,
+            header_style="bold yellow"
+        )
+        table.add_column("#", style="cyan dim", width=4, justify="right")
+        table.add_column("Field Name", style="yellow bold", width=15)
+        table.add_column("CSS Selector", style="cyan", width=30, overflow="fold")
+        table.add_column("Sample Value", style="white dim", max_width=30, overflow="ellipsis")
+        
         for idx, field in enumerate(suggested_fields, 1):
-            console.print(f"  {idx}. {field['name']}: {field['selector']}")
+            name_str = field.get("name", "").title()
+            selector = field.get("selector", "")
+            sample = field.get("sample", "")
+            sample = " ".join(sample.split())[:30]
+            
+            table.add_row(str(idx), name_str, selector, sample)
+        
+        console.print(table)
         console.print()
         
-        if Confirm.ask("Use suggested fields?", default=True):
+        if Confirm.ask("Use all suggested fields?", default=True):
             for field in suggested_fields:
-                fields[field["name"]] = FieldSchema(selector=field["selector"])
+                field_name = field["name"]
+                selector = field["selector"]
+                
+                # Auto-detect attributes
+                attribute = None
+                if "href" in selector.lower() or field_name.lower() in ["url", "link"]:
+                    attribute = "href"
+                elif "src" in selector.lower() or field_name.lower() in ["image", "img"]:
+                    attribute = "src"
+                
+                fields[field_name] = FieldSchema(
+                    selector=selector,
+                    attribute=attribute
+                )
+            
+            console.print(f"[green]✓[/green] Added {len(fields)} fields")
+        else:
+            console.print("\n[dim]Select individual fields (comma-separated numbers, e.g., '1,3,5' or 'all'):[/dim]")
+            selection = Prompt.ask("Fields to include", default="all")
+            
+            if selection.lower() == "all":
+                selected_indices = list(range(1, len(suggested_fields) + 1))
+            else:
+                try:
+                    selected_indices = [int(x.strip()) for x in selection.split(",")]
+                except ValueError:
+                    console.print("[yellow]Invalid selection, using all fields[/yellow]")
+                    selected_indices = list(range(1, len(suggested_fields) + 1))
+            
+            for idx in selected_indices:
+                if 1 <= idx <= len(suggested_fields):
+                    field = suggested_fields[idx - 1]
+                    field_name = field["name"]
+                    selector = field["selector"]
+                    
+                    # Auto-detect attributes
+                    attribute = None
+                    if "href" in selector.lower() or field_name.lower() in ["url", "link"]:
+                        attribute = "href"
+                    elif "src" in selector.lower() or field_name.lower() in ["image", "img"]:
+                        attribute = "src"
+                    
+                    fields[field_name] = FieldSchema(
+                        selector=selector,
+                        attribute=attribute
+                    )
+            
+            console.print(f"[green]✓[/green] Added {len(fields)} fields")
     
     # Manual field entry
+    console.print()
     while True:
         if fields:
-            if not Confirm.ask("\nAdd another field?", default=True):
+            if not Confirm.ask("Add custom field?", default=False):
                 break
         else:
             console.print("[yellow]No fields defined yet. Add at least one field.[/yellow]")
@@ -122,9 +236,15 @@ def build_schema_interactive(
         # Ask for attribute if it looks like a link/image
         attribute = None
         if "href" in selector.lower() or field_name.lower() in ["url", "link"]:
-            attribute = Prompt.ask("Extract attribute", default="href")
+            if Confirm.ask("Extract 'href' attribute?", default=True):
+                attribute = "href"
         elif "src" in selector.lower() or field_name.lower() in ["image", "img"]:
-            attribute = Prompt.ask("Extract attribute", default="src")
+            if Confirm.ask("Extract 'src' attribute?", default=True):
+                attribute = "src"
+        else:
+            custom_attr = Prompt.ask("Extract attribute (leave empty for text)", default="")
+            if custom_attr.strip():
+                attribute = custom_attr.strip()
         
         required = Confirm.ask(f"Is '{field_name}' required?", default=False)
         
@@ -136,18 +256,57 @@ def build_schema_interactive(
         
         console.print(f"[green]✓[/green] Added field: {field_name}")
     
+    if not fields:
+        console.print("[red]Error: At least one field is required[/red]")
+        raise ValueError("At least one field is required")
+    
     # Step 5: Pagination (optional)
-    console.print(Panel("\n[bold]Step 4: Pagination (Optional)[/bold]", border_style="cyan"))
+    console.print()
+    console.print(Panel(
+        "[bold]Step 4: Pagination (Optional)[/bold]\n"
+        "Configure multi-page extraction",
+        title="Pagination",
+        title_align="left",
+        border_style="cyan"
+    ))
     
     pagination = None
-    if Confirm.ask("Does this page have pagination?", default=False):
+    
+    # Check for common pagination patterns
+    if html:
+        soup = BeautifulSoup(html, "html.parser")
+        pagination_candidates = []
+        
+        # Common pagination selectors
+        patterns = [
+            ("a.next", "Next link (class='next')"),
+            ("a[rel='next']", "Next link (rel='next')"),
+            (".pagination a:last-child", "Last pagination link"),
+            ("a:contains('Next')", "Link containing 'Next'"),
+        ]
+        
+        for selector, desc in patterns:
+            try:
+                if soup.select(selector):
+                    pagination_candidates.append((selector, desc))
+            except Exception:
+                pass
+        
+        if pagination_candidates:
+            console.print("[dim]Detected pagination patterns:[/dim]")
+            for idx, (sel, desc) in enumerate(pagination_candidates, 1):
+                console.print(f"  {idx}. {sel} - {desc}")
+            console.print()
+    
+    if Confirm.ask("Enable pagination?", default=False):
         next_selector = Prompt.ask("Next page link selector", default="a.next")
-        max_pages = Prompt.ask("Max pages to scrape (optional)", default="")
+        max_pages_str = Prompt.ask("Max pages to scrape (leave empty for unlimited)", default="")
         
         pagination = PaginationSchema(
             next_selector=next_selector,
-            max_pages=int(max_pages) if max_pages.strip() else None
+            max_pages=int(max_pages_str) if max_pages_str.strip() else None
         )
+        console.print(f"[green]✓[/green] Pagination enabled")
     
     # Build schema
     schema = ExtractionSchema(
@@ -160,12 +319,16 @@ def build_schema_interactive(
     )
     
     # Summary
-    console.print(Panel("\n[bold green]✓ Schema Created[/bold green]", border_style="green"))
-    console.print(f"Name: {schema.name}")
-    console.print(f"Item selector: {schema.item_selector}")
-    console.print(f"Fields: {len(schema.fields)}")
-    if schema.pagination:
-        console.print(f"Pagination: enabled")
+    console.print()
+    console.print(Panel(
+        f"[bold]Name:[/bold] {schema.name}\n"
+        f"[bold]Item selector:[/bold] [cyan]{schema.item_selector}[/cyan]\n"
+        f"[bold]Fields:[/bold] {len(schema.fields)} ({', '.join(schema.fields.keys())})\n" +
+        (f"[bold]Pagination:[/bold] enabled (max: {schema.pagination.max_pages or 'unlimited'})" if schema.pagination else "[bold]Pagination:[/bold] disabled"),
+        title="Schema Summary",
+        title_align="left",
+        border_style="green"
+    ))
     
     return schema
 
