@@ -60,6 +60,7 @@ Quarry follows a **mining metaphor** for web data extraction:
 
 Quarry tools can automatically pass data to the next tool in the workflow. When using interactive mode, each tool will offer to launch the next step with your data already loaded:
 
+- **Scout → Survey**: After analyzing a page, scout offers to create a schema with the URL and analysis
 - **Survey → Excavate**: After creating a schema, survey offers to run excavate with it
 - **Excavate → Polish**: After extraction, excavate offers to clean the data
 - **Polish → Ship**: After polishing, polish offers to export the results

@@ -7,6 +7,7 @@ import click
 import questionary
 
 from quarry.lib.http import get_html
+from quarry.lib.session import set_last_schema
 from .analyzer import analyze_page
 from .reporter import format_as_json, format_as_terminal
 
@@ -186,6 +187,48 @@ def scout(url_or_file, file, output, format, pretty, find_api, batch_mode):
         click.echo(f"✅ Saved to: {output}", err=True)
     else:
         click.echo(result)
+    
+    # Offer to run survey next (only in interactive mode and if we have a URL)
+    if not batch_mode and url and format.lower() == "terminal":
+        click.echo("", err=True)
+        if click.confirm("🔗 Create extraction schema now with survey?", default=False):
+            click.echo("", err=True)
+            click.echo("Starting survey...", err=True)
+            click.echo("─" * 50, err=True)
+            
+            # Import here to avoid circular dependency
+            from quarry.tools.survey.cli import survey, create
+            from click.testing import CliRunner
+            
+            # Save analysis to temp file if not already saved
+            analysis_file = None
+            if output and format.lower() == "json":
+                analysis_file = output
+            elif format.lower() == "terminal":
+                # Save analysis to temp file for survey to use
+                import tempfile
+                import json
+                fd, analysis_file = tempfile.mkstemp(suffix=".json", prefix="probe_")
+                with open(fd, 'w') as f:
+                    json.dump(analysis, f, indent=2)
+            
+            # Run survey create with the URL and analysis
+            runner = CliRunner(mix_stderr=False)
+            survey_args = ["create", "--url", url]
+            if analysis_file:
+                survey_args.extend(["--from-probe", analysis_file])
+            
+            result = runner.invoke(survey, survey_args, standalone_mode=False)
+            
+            # Clean up temp file if we created one
+            if analysis_file and not output:
+                import os
+                try:
+                    os.unlink(analysis_file)
+                except:
+                    pass
+            
+            sys.exit(result.exit_code if result.exit_code else 0)
 
 
 if __name__ == "__main__":
