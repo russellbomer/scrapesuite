@@ -50,10 +50,10 @@ def create(from_probe, url, file, output, preview):
     
     \b
     Examples:
-      foundry blueprint create
-      foundry blueprint create --url https://example.com
-      foundry blueprint create --from-probe analysis.json
-      foundry blueprint create --file page.html --output my-schema.yml
+      quarry survey create
+      quarry survey create --url https://example.com
+      quarry survey create --from-probe analysis.json
+      quarry survey create --file page.html --output my-schema.yml
     """
     # Load analysis if provided
     analysis = None
@@ -155,7 +155,7 @@ def validate(schema_file):
     
     \b
     Example:
-      foundry blueprint validate schema.yml
+      quarry survey validate schema.yml
     """
     click.echo(f"🔍 Validating {schema_file}...", err=True)
     
@@ -198,8 +198,8 @@ def preview_cmd(schema_file, url, file, limit):
     
     \b
     Examples:
-      foundry blueprint preview schema.yml --url https://example.com
-      foundry blueprint preview schema.yml --file page.html
+      quarry survey preview schema.yml --url https://example.com
+      quarry survey preview schema.yml --file page.html
     """
     # Load schema
     click.echo(f"📋 Loading schema from {schema_file}...", err=True)

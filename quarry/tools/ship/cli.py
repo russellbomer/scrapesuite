@@ -53,20 +53,20 @@ def ship(input_file, destination, table, if_exists, delimiter, pretty, exclude_m
     """
     Package and export data to various destinations.
     
-    CRATE exports data from JSONL files to CSV, JSON, databases, and more.
+    SHIP exports data from JSONL files to CSV, JSON, databases, and more.
     It automatically detects the format from the destination.
     
     \b
     Interactive Mode (default):
-      foundry crate
+      quarry ship
       → Prompts for input file and export format
     
     \b
     Batch Mode (with arguments):
-      foundry crate data.jsonl output.csv
-      foundry crate data.jsonl output.json --pretty --batch
-      foundry crate data.jsonl data.db --table products
-      foundry crate data.jsonl output.csv --delimiter "|"
+      quarry ship data.jsonl output.csv
+      quarry ship data.jsonl output.json --pretty --batch
+      quarry ship data.jsonl data.db --table products
+      quarry ship data.jsonl output.csv --delimiter "|"
     
     \b
     Supported formats:
@@ -78,7 +78,7 @@ def ship(input_file, destination, table, if_exists, delimiter, pretty, exclude_m
     
     # Interactive mode: prompt for missing values
     if not batch_mode and not input_file:
-        click.echo("📦 Foundry Crate - Interactive Mode\n", err=True)
+        click.echo("📦 Quarry Ship - Interactive Mode\n", err=True)
         
         # Check if there's output from a previous tool invocation
         last_output = get_last_output()

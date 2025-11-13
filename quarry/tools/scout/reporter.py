@@ -204,7 +204,7 @@ def format_as_terminal(analysis: dict[str, Any]) -> str:
                 warning_text += f"  • {signal}\n"
             
             warning_text += "\n[bold cyan]💡 Solution:[/bold cyan] Find the underlying API endpoint\n"
-            warning_text += "[dim]Run:[/dim] [cyan]foundry probe --find-api[/cyan]"
+            warning_text += "[dim]Run:[/dim] [cyan]quarry scout --find-api[/cyan]"
             
             console.print(Panel(
                 warning_text,

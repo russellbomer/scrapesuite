@@ -50,7 +50,7 @@ def scout(url_or_file, file, output, format, pretty, find_api, batch_mode):
     """
     Analyze HTML structure and detect patterns.
     
-    PROBE examines web pages to identify:
+    SCOUT examines web pages to identify:
     
     \b
     • Frameworks (Bootstrap, React, WordPress, etc.)
@@ -60,15 +60,15 @@ def scout(url_or_file, file, output, format, pretty, find_api, batch_mode):
     
     \b
     Interactive Mode (default):
-      foundry probe
+      quarry scout
       → Prompts for URL or file path
     
     \b
     Batch Mode (with arguments):
-      foundry probe https://news.ycombinator.com
-      foundry probe --file page.html --format json
-      foundry probe https://github.com --output analysis.json --batch
-      foundry probe --find-api  # Guide for infinite scroll sites
+      quarry scout https://news.ycombinator.com
+      quarry scout --file page.html --format json
+      quarry scout https://github.com --output analysis.json --batch
+      quarry scout --find-api  # Guide for infinite scroll sites
     """
     
     # Show API finding guide if requested
@@ -79,7 +79,7 @@ def scout(url_or_file, file, output, format, pretty, find_api, batch_mode):
     
     # Interactive mode: prompt for missing values
     if not batch_mode and not url_or_file and not file:
-        click.echo("🔍 Foundry Probe - Interactive Mode\n", err=True)
+        click.echo("🔍 Quarry Scout - Interactive Mode\n", err=True)
         
         # Prompt for source type
         source_type = questionary.select(

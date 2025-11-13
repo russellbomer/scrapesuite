@@ -37,7 +37,7 @@ def build_schema_interactive(
         
         console = Console()
         console.print("\n╭─────────────────────────────────────────────────────────────╮", style="cyan")
-        console.print("│ [bold cyan]BLUEPRINT BUILDER[/bold cyan]                                       │", style="cyan")
+        console.print("│ [bold cyan]SURVEY BUILDER[/bold cyan]                                         │", style="cyan")
         console.print("╰─────────────────────────────────────────────────────────────╯", style="cyan")
         console.print("[dim]Create an extraction schema interactively[/dim]\n")
     except ImportError:
@@ -533,7 +533,7 @@ def _build_schema_simple(
     html: str | None = None
 ) -> ExtractionSchema:
     """Fallback builder without rich library."""
-    print("\n=== Blueprint Builder ===\n")
+    print("\n=== Survey Builder ===")
     
     # Schema metadata
     name = input("Schema name [extraction]: ").strip() or "extraction"

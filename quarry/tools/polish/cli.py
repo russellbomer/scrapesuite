@@ -58,24 +58,24 @@ def polish(input_file, output, dedupe, dedupe_keys, dedupe_strategy, transform, 
     Transform and enrich extracted data.
     
     POLISH cleans, deduplicates, validates, and enriches data from JSONL files.
-    It's designed to work with output from the Forge tool.
+    It's designed to work with output from the excavate tool.
     
     \b
     Interactive Mode (default):
-      foundry polish
+      quarry polish
       → Prompts for input file and operations
     
     \b
     Batch Mode (with arguments):
-      foundry polish data.jsonl --dedupe
-      foundry polish data.jsonl --dedupe-keys title link --batch
-      foundry polish data.jsonl --transform url:extract_domain
-      foundry polish data.jsonl --dedupe --skip-invalid --output clean.jsonl
+      quarry polish data.jsonl --dedupe
+      quarry polish data.jsonl --dedupe-keys title link --batch
+      quarry polish data.jsonl --transform url:extract_domain
+      quarry polish data.jsonl --dedupe --skip-invalid --output clean.jsonl
     """
     
     # Interactive mode: prompt for missing values
     if not batch_mode and not input_file:
-        click.echo("✨ Foundry Polish - Interactive Mode\n", err=True)
+        click.echo("✨ Quarry Polish - Interactive Mode\n", err=True)
         
         # Check if there's output from a previous tool invocation
         last_output = get_last_output()

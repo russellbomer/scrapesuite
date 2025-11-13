@@ -52,23 +52,23 @@ def excavate(schema_file, url, file, output, max_pages, no_metadata, pretty, bat
     """
     Execute extraction at scale using a schema.
     
-    FORGE runs the extraction engine to pull structured data from web pages.
+    EXCAVATE runs the extraction engine to pull structured data from web pages.
     It handles pagination, rate limiting, and exports to JSONL format.
     
     \b
     Interactive Mode (default):
-      foundry forge
+      quarry excavate
       → Prompts for schema, source, and output
     
     \b
     Batch Mode (with flags for automation):
-      foundry forge schema.yml --url https://example.com --output data.jsonl
-      foundry forge schema.yml --file page.html --batch
-      foundry forge schema.yml --max-pages 10
+      quarry excavate schema.yml --url https://example.com --output data.jsonl
+      quarry excavate schema.yml --file page.html --batch
+      quarry excavate schema.yml --max-pages 10
     """
     # Interactive mode: prompt for missing values
     if not batch_mode and not schema_file:
-        click.echo("🔨 Foundry Forge - Interactive Mode\n", err=True)
+        click.echo("🔨 Quarry Excavate - Interactive Mode\n", err=True)
         
         # Check if there's a schema from a previous tool invocation
         last_schema = get_last_schema()
