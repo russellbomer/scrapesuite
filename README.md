@@ -3,47 +3,41 @@
 **A modern Python toolkit for web data extraction with robust support for React, Vue, and other JavaScript frameworks.**
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-199%20passing-success.svg)](./tests/)
+[![Tests](https://img.shields.io/badge/tests-210%20passing-success.svg)](./tests/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
 ---
 
 ## 🌟 What is Quarry?
 
-Quarry provides **two powerful approaches** for web scraping:
+**Honest web scraping for government, academic, and static HTML sites.**
 
-1. **⚒️ Quarry Tools** - Interactive CLI pipeline for building extraction workflows
-2. **🧙 Wizard Mode** - YAML-driven declarative scraping with automatic framework detection
+Quarry is a CLI toolkit that extracts structured data from traditional websites. Unlike tools that promise universal compatibility, Quarry detects technical limitations upfront—identifying when modern frameworks (React, Next.js, Vue) make traditional scraping infeasible and recommending API-based alternatives instead.
 
-**Key Feature**: Resilient selectors that survive CSS framework updates (React CSS-in-JS, Vue scoped styles, etc.)
+**Best for**: Government data portals, academic sites, documentation sites, traditional HTML pages  
+**Limitations**: Dynamic JavaScript sites require API access (Quarry will detect this and guide you)
 
 ---
 
-## 🚀 Quick Start
-
-### Installation
+## 🚀 5-Minute Quick Start
 
 ```bash
-pip install -e .  # From source
-# or: pip install quarry  # From PyPI (coming soon)
+# Install
+pip install -e .
+
+# Extract live weather alerts (no config needed!)
+quarry excavate examples/schemas/weather_simple.yml
+
+# Convert to CSV
+quarry ship output.jsonl alerts.csv
+
+# Done! Open alerts.csv
 ```
 
-**Requirements**: Python 3.11+
+**See real data in under 1 minute.** 📊
 
-### Your First Extraction
-
-```bash
-# Analyze a webpage
-quarry scout https://example.com
-
-# Extract data
-quarry excavate schema.yml --url https://example.com
-
-# Export results
-quarry ship output.jsonl results.csv
-```
-
-📖 **Full guide**: [USAGE_GUIDE.md](USAGE_GUIDE.md) | [INSTALLATION.md](INSTALLATION.md)
+📖 **Full tutorial**: [QUICKSTART.md](QUICKSTART.md) - Extract from any site in 5 minutes  
+📖 **Advanced guide**: [USAGE_GUIDE.md](USAGE_GUIDE.md)
 
 ---
 
