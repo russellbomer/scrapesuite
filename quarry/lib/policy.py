@@ -26,7 +26,7 @@ def is_allowed_domain(url: str, allowlist: list[str]) -> bool:
     return False
 
 
-def check_robots(url: str, user_agent: str = "Foundry") -> bool:
+def check_robots(url: str, user_agent: str = "Quarry") -> bool:
     """
     Check if URL is allowed by robots.txt.
 

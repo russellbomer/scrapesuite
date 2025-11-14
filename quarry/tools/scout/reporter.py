@@ -46,7 +46,7 @@ def format_as_terminal(analysis: dict[str, Any]) -> str:
         url = analysis.get("url", "")
         console.print()
         console.print("╭────────────────────────────────────────────────────╮", style="cyan")
-        console.print("│ [bold cyan]PROBE ANALYSIS[/bold cyan]                            │", style="cyan")
+        console.print("│ [bold cyan]SCOUT ANALYSIS[/bold cyan]                            │", style="cyan")
         console.print("╰────────────────────────────────────────────────────╯", style="cyan")
         
         if url:

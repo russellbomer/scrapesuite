@@ -122,7 +122,7 @@ class RobotsCache:
 
         return robots_txt, crawl_delay
 
-    def is_allowed(self, url: str, user_agent: str = "Foundry") -> bool:
+    def is_allowed(self, url: str, user_agent: str = "Quarry") -> bool:
         """
         Check if URL is allowed by robots.txt for given user agent.
 
@@ -169,7 +169,7 @@ def get_cache(db_path: str | None = None) -> RobotsCache:
     return _CACHE_CONTAINER["instance"]
 
 
-def check_robots(url: str, user_agent: str = "Foundry") -> bool:
+def check_robots(url: str, user_agent: str = "Quarry") -> bool:
     """
     Check if URL is allowed by robots.txt.
 

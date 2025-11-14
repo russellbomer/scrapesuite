@@ -1,13 +1,65 @@
 """
-Robust CSS selector builder for complex nested structures.
+Robust CSS selector utilities for handling modern frameworks.
 
-Handles:
-- Deep nesting (10+ levels)
-- Dynamic/obfuscated class names
-- Unstable DOM structures
+Provides:
+- SelectorChain: Multi-tier selector fallbacks for resilience
+- build_robust_selector(): Smart selector building avoiding dynamic classes
+- validate_selector(): Pre-deployment selector testing
+- Utilities for handling CSS-in-JS and dynamic frameworks
 """
 
-from bs4 import Tag
+import re
+from typing import Any
+
+from bs4 import BeautifulSoup, Tag
+
+
+from bs4 import BeautifulSoup, Tag
+
+
+class SelectorChain:
+    """
+    Multi-tier selector with fallbacks for resilience against CSS changes.
+    
+    Example:
+        chain = SelectorChain([
+            "h3.css-17p10p8 a",     # Specific (brittle)
+            "h3 a",                  # Structural (more resilient)
+            "article a:first-of-type"  # Semantic (most resilient)
+        ])
+        value = chain.select_one(element)
+    """
+    
+    def __init__(self, selectors: list[str]):
+        """
+        Initialize selector chain.
+        
+        Args:
+            selectors: List of selectors ordered from most to least specific
+        """
+        self.selectors = selectors
+    
+    def select_one(self, element: Tag) -> Tag | None:
+        """Try selectors in order until one matches."""
+        for selector in self.selectors:
+            try:
+                result = element.select_one(selector)
+                if result:
+                    return result
+            except Exception:
+                continue
+        return None
+    
+    def select(self, element: Tag) -> list[Tag]:
+        """Try selectors in order until one finds elements."""
+        for selector in self.selectors:
+            try:
+                results = element.select(selector)
+                if results:
+                    return results
+            except Exception:
+                continue
+        return []
 
 
 def build_robust_selector(element: Tag, root: Tag | None = None) -> str:
@@ -211,3 +263,132 @@ def simplify_selector(selector: str) -> str:
     
     # Return simplified selector
     return " ".join(filtered) if filtered else selector
+
+
+def extract_structural_pattern(selector: str) -> str:
+    """
+    Convert specific selector to structural pattern by removing dynamic classes.
+    
+    Examples:
+        "h3.css-17p10p8 a" -> "h3 a"
+        ".css-1jydbgl article" -> "article"
+        "div.emotion-abc > span" -> "div > span"
+    
+    Args:
+        selector: CSS selector string
+    
+    Returns:
+        Selector with dynamic classes removed
+    """
+    # Remove dynamic classes
+    pattern = re.sub(r'\.(css-[a-z0-9]+|emotion-[a-z0-9]+|_[a-z0-9]{6,})', '', selector)
+    
+    # Clean up extra spaces
+    pattern = re.sub(r'\s+', ' ', pattern).strip()
+    
+    # Remove attribute selectors that might be dynamic
+    pattern = re.sub(r'\[data-[a-z]+-[a-z0-9]{6,}.*?\]', '', pattern)
+    
+    return pattern
+
+
+def validate_selector(
+    soup: BeautifulSoup | Tag, 
+    selector: str, 
+    expected_count: int | None = None
+) -> dict[str, Any]:
+    """
+    Validate that a selector works correctly on HTML.
+    
+    Args:
+        soup: BeautifulSoup object or Tag to test selector on
+        selector: CSS selector to validate
+        expected_count: Optional expected number of matches
+    
+    Returns:
+        Dict with validation results:
+        {
+            "valid": bool,
+            "count": int,
+            "sample_texts": list[str],
+            "warnings": list[str]
+        }
+    """
+    warnings = []
+    
+    try:
+        elements = soup.select(selector)
+        count = len(elements)
+        
+        # Get sample texts
+        sample_texts = []
+        for elem in elements[:3]:
+            text = elem.get_text(strip=True)[:100]
+            if text:
+                sample_texts.append(text)
+        
+        # Check if count matches expectations
+        if expected_count is not None and count != expected_count:
+            warnings.append(f"Expected {expected_count} matches, got {count}")
+        
+        # Check if we got any matches
+        if count == 0:
+            warnings.append("Selector matched no elements")
+        
+        # Check if all matches are empty
+        if count > 0 and not sample_texts:
+            warnings.append("All matched elements are empty")
+        
+        # Check for dynamic classes in selector
+        if re.search(r'\.(css-[a-z0-9]+|emotion-[a-z0-9]+)', selector):
+            warnings.append("Selector contains dynamic CSS classes (may break on rebuild)")
+        
+        return {
+            "valid": len(warnings) == 0,
+            "count": count,
+            "sample_texts": sample_texts,
+            "warnings": warnings,
+        }
+    
+    except Exception as e:
+        return {
+            "valid": False,
+            "count": 0,
+            "sample_texts": [],
+            "warnings": [f"Selector parsing failed: {e}"],
+        }
+
+
+def build_fallback_chain(primary_selector: str, context: list[str] | None = None) -> SelectorChain:
+    """
+    Build a fallback chain from a specific selector.
+    
+    Args:
+        primary_selector: The ideal/specific selector
+        context: Optional context hints (e.g., ["class", "tag", "id"])
+    
+    Returns:
+        SelectorChain with fallback selectors from most to least specific
+    """
+    chain = [primary_selector]
+    
+    # Add structural variant (without dynamic classes)
+    structural = extract_structural_pattern(primary_selector)
+    if structural and structural != primary_selector:
+        chain.append(structural)
+    
+    # Add tag-only variant
+    # Extract just the tag names
+    tags = re.findall(r'\b(h[1-6]|article|section|div|span|a|p|time|img)\b', primary_selector)
+    if tags:
+        # Build hierarchy from tags
+        tag_chain = " ".join(tags)
+        if tag_chain not in chain:
+            chain.append(tag_chain)
+        
+        # Also add just the final tag
+        if len(tags) > 1 and tags[-1] not in chain:
+            chain.append(tags[-1])
+    
+    return SelectorChain(chain)
+

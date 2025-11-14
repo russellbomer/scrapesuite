@@ -1,4 +1,4 @@
-"""CLI interface for Foundry."""
+"""CLI interface for Quarry."""
 
 import os
 import sqlite3
@@ -20,7 +20,7 @@ HIGH_RATE_LIMIT_THRESHOLD = 5.0
 
 app = typer.Typer(
     help=(
-        "Foundry - Web scraping toolkit with offline testing, "
+        "Quarry - Web scraping toolkit with offline testing, "
         "rate limiting, and robots.txt compliance."
     ),
     add_completion=False,
@@ -40,7 +40,7 @@ def init() -> None:
     - Rate limits and policy
 
     Example:
-        $ python -m foundry.cli init
+        $ quarry init
     """
     try:
         run_wizard()
@@ -287,7 +287,7 @@ def batch(
 @app.command()
 def check_robots(
     url: str = typer.Argument(..., help="URL to check against robots.txt"),
-    user_agent: str = typer.Option("Foundry", "--user-agent", "-ua", help="User-Agent string"),
+    user_agent: str = typer.Option("Quarry", "--user-agent", "-ua", help="User-Agent string"),
 ) -> None:
     """
     Check if a URL is allowed by robots.txt.
@@ -296,8 +296,8 @@ def check_robots(
     is allowed for the specified User-Agent.
 
     Examples:
-        $ python -m foundry.cli check-robots https://github.com/explore
-        $ python -m foundry.cli check-robots https://reddit.com/r/python -ua "MyBot"
+        $ quarry check-robots https://github.com/explore
+        $ quarry check-robots https://reddit.com/r/python --user-agent "MyBot"
     """
     try:
         cache = RobotsCache()
@@ -340,8 +340,8 @@ def failed(
     Lists all URLs that failed to fetch, with error messages and retry counts.
 
     Examples:
-        $ python -m foundry.cli failed fda_recalls
-        $ python -m foundry.cli failed  # Show all failed URLs
+        $ quarry failed fda_recalls
+        $ quarry failed  # Show all failed URLs
     """
     try:
         conn = open_db(db)
@@ -410,8 +410,8 @@ def inspect(
     Shows parsed job details, validates YAML, and checks for common issues.
 
     Examples:
-        $ python -m foundry.cli inspect jobs/fda.yml
-        $ python -m foundry.cli inspect examples/jobs/nws.yml
+        $ quarry inspect jobs/fda.yml
+        $ quarry inspect examples/jobs/nws.yml
     """
     try:
         job_dict = load_yaml(job_yaml)
@@ -475,7 +475,7 @@ def cache_info(
     Displays robots.txt cache, job state, and item counts.
 
     Examples:
-        $ python -m foundry.cli cache-info
+        $ quarry cache-info
     """
     try:
         console.print("[bold]Cache Information[/bold]\n")

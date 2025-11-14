@@ -6,7 +6,7 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup
 
-from scrapesuite.framework_profiles import (
+from quarry.framework_profiles import (
     FRAMEWORK_PROFILES,
     detect_all_frameworks,
     detect_framework,

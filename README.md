@@ -1,29 +1,21 @@
 # Quarry 🪨⛏️
 
-**A modern, production-ready Python toolkit for web data extraction, transformation, and export.**
+**A modern Python toolkit for web data extraction with robust support for React, Vue, and other JavaScript frameworks.**
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://img.shields.io/badge/tests-199%20passing-success.svg)](./tests/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-2.0.0-green.svg)](https://github.com/russellbomer/quarry)
 
 ---
 
-## 🌟 Overview
+## 🌟 What is Quarry?
 
-**Quarry** is a complete web scraping suite built around a **mining metaphor**:
+Quarry provides **two powerful approaches** for web scraping:
 
-```
-Scout → Survey → Excavate → Polish → Ship
-```
+1. **⚒️ Quarry Tools** - Interactive CLI pipeline for building extraction workflows
+2. **🧙 Wizard Mode** - YAML-driven declarative scraping with automatic framework detection
 
-Discover sites, map structures, extract data, refine results, and export anywhere.
-
-**Two powerful approaches:**
-1. **⚒️ Quarry Tools** - Interactive CLI pipeline (scout, survey, excavate, polish, ship)
-2. **🧙 Legacy Wizard** - YAML-driven declarative scraping with 15+ built-in templates
-
-Choose the workflow that fits your needs, or combine both!
+**Key Feature**: Resilient selectors that survive CSS framework updates (React CSS-in-JS, Vue scoped styles, etc.)
 
 ---
 
@@ -32,211 +24,125 @@ Choose the workflow that fits your needs, or combine both!
 ### Installation
 
 ```bash
-# Install from PyPI (recommended)
-pip install quarry
-
-# Or install from source
-git clone https://github.com/russellbomer/quarry.git
-cd quarry
-pip install -e .
+pip install -e .  # From source
+# or: pip install quarry  # From PyPI (coming soon)
 ```
 
-**Requirements**: Python 3.11+ (3.12 recommended)
+**Requirements**: Python 3.11+
 
-📖 **Full installation guide**: [INSTALLATION.md](INSTALLATION.md)
-
-### First Extraction (Interactive)
+### Your First Extraction
 
 ```bash
 # Analyze a webpage
-quarry.scout https://example.com
+quarry scout https://example.com
 
-# Create extraction schema (guided)
-quarry.survey create
+# Extract data
+quarry excavate schema.yml --url https://example.com
 
-# Extract data (prompted for URL)
-quarry.excavate schema.yml
-
-# Clean & export
-quarry.polish output.jsonl --dedupe
-quarry.ship output_polished.jsonl results.csv
+# Export results
+quarry ship output.jsonl results.csv
 ```
 
-📚 **Complete usage guide**: [USAGE_GUIDE.md](USAGE_GUIDE.md)
+📖 **Full guide**: [USAGE_GUIDE.md](USAGE_GUIDE.md) | [INSTALLATION.md](INSTALLATION.md)
 
 ---
 
-## ⚒️ Quarry Suite (v2.0)
+## ⚒️ Quarry Tools
 
-A complete toolkit for building extraction pipelines with **5 integrated tools**:
+**5 integrated tools** for complete extraction pipelines:
 
-### The 5 Tools
-
-| Tool | Purpose | Usage |
-|------|---------|-------|
-| **📡 Scout** | Analyze HTML & detect patterns | `quarry scout <url\|file>` |
+| Tool | Purpose | Example |
+|------|---------|---------|
+| **📡 Scout** | Analyze HTML & detect patterns | `quarry scout <url>` |
 | **📐 Survey** | Design extraction schemas | `quarry survey create schema.yml` |
 | **🔨 Excavate** | Execute data extraction | `quarry excavate schema.yml --url <url>` |
 | **✨ Polish** | Transform & clean data | `quarry polish data.jsonl --dedupe` |
-| **📦 Ship** | Export to multiple formats | `quarry ship data.jsonl output.csv` |
+| **📦 Ship** | Export to CSV/JSON/SQLite | `quarry ship data.jsonl output.csv` |
 
-### Complete Pipeline Example
-
+**Complete pipeline**:
 ```bash
-# 1. Analyze HTML structure
-quarry scout https://example.com/blog --format json --output analysis.json
-
-# 2. Design extraction schema
-quarry survey create blog_schema.yml
-# (Interactive editor opens - define containers & fields)
-
-# 3. Preview extraction
-quarry survey preview blog_schema.yml --file page.html
-
-# 4. Execute extraction
-quarry excavate blog_schema.yml --url https://example.com/blog --output raw.jsonl
-
-# 5. Clean & deduplicate
-quarry polish raw.jsonl --dedupe --dedupe-keys title --output clean.jsonl
-
-# 6. Export to CSV
-quarry ship clean.jsonl blog_posts.csv
+quarry scout <url> | quarry excavate | quarry polish --dedupe | quarry ship results.csv
 ```
 
-### Tool Features
-
-**🔍 Scout** - HTML Analysis
-- Framework detection (React, WordPress, Django, etc.)
-- Container pattern finding with confidence scores
-- Field suggestions based on HTML structure
-- JSON/terminal output formats
-
-**📐 Survey** - Schema Designer  
-- Interactive schema builder with validation
-- Live extraction preview
-- Pydantic-based schema validation
-- Pagination configuration support
-
-**🔨 Excavate** - Extraction Engine
-- Schema-driven extraction
-- Built-in pagination support
-- Rate limiting & robots.txt compliance
-- JSONL streaming output
-
-**✨ Polish** - Data Transformation
-- Deduplication (first/last strategies)
-- 10+ built-in transformers (normalize_text, parse_date, extract_domain, etc.)
-- Validation rules (email, URL, date, pattern matching)
-- Field filtering & statistics
-
-**📦 Ship** - Data Export
-- CSV, JSON, SQLite exports
-- Format auto-detection
-- Custom table names & schema options
-- PostgreSQL/MySQL ready (coming soon)
-
-**📚 Detailed Quarry Documentation**: [docs/QUARRY_COMPLETE.md](docs/QUARRY_COMPLETE.md)
+📚 **Detailed docs**: [docs/QUARRY_COMPLETE.md](docs/QUARRY_COMPLETE.md)
 
 ---
 
-## 🧙 Legacy Wizard Suite
+## 🧙 Wizard Mode
 
-Interactive, YAML-driven scraping with zero coding required.
-
-### Key Features
-
-**Interactive Wizard**
-- Generate scrapers through guided prompts
-- Automatic framework detection (9 frameworks)
-- Smart selector suggestions
-- Offline mode (paste HTML directly)
-
-**YAML-Based Jobs**
-- Declarative job definitions
-- Reusable configurations
-- Multiple output formats (Parquet, CSV, JSONL)
-- Connector/transform/sink pipeline
-
-**Framework-Aware Extraction**
-- Detects: WordPress, Drupal, React, Vue, Next.js, Bootstrap, Tailwind, Shopify, Django
-- 17+ field types (title, url, date, author, category, tags, rating, etc.)
-- Framework-specific selector patterns
-- Multi-framework site support
-
-**State Management**
-- SQLite-based cursor tracking
-- Idempotent deduplication
-- Failed URL recovery
-- Batch tracking with timestamps
-
-**Polite Scraping**
-- Per-domain rate limiting (token bucket)
-- Robots.txt parsing & caching (24h TTL)
-- Exponential backoff with jitter
-- Adaptive throttling (429/503 errors)
-
-### Wizard Quick Start
+**Zero-code scraping** with automatic framework detection:
 
 ```bash
 # Launch interactive wizard
 quarry init
 
-# The wizard will:
-# 1. Ask for URL to scrape
-# 2. Detect framework (WordPress, React, etc.)
-# 3. Analyze HTML and suggest selectors
-# 4. Let you pick containers & fields
-# 5. Generate YAML job file
+# Wizard will:
+# 1. Detect framework (React, WordPress, etc.)
+# 2. Suggest selectors
+# 3. Generate YAML job file
 
 # Run generated job
-quarry run jobs/my_job.yml --live --max-items 20
-
-# View state & results
-quarry state
+quarry run jobs/my_job.yml --live
 ```
 
-### Example Job File
+**Supports 9 frameworks**: WordPress, Drupal, React, Vue, Next.js, Bootstrap, Tailwind, Shopify, Django
 
-```yaml
-id: blog_posts
-connector:
-  type: custom
-  url: https://blog.example.com
-  item_selector: article.post
-  fields:
-    - field: title
-      selector: h2.entry-title
-    - field: url
-      selector: a.permalink::attr(href)
-    - field: date
-      selector: time.published::attr(datetime)
-    - field: author
-      selector: .author-name
-  pagination:
-    next_selector: a.next-page::attr(href)
-    max_pages: 10
-
-sink:
-  type: parquet
-  path: data/cache/blog_posts
-```
-
-**📚 Wizard Documentation**: [docs/WIZARD.md](docs/WIZARD.md)
+📚 **Wizard guide**: [docs/WIZARD.md](docs/WIZARD.md)
 
 ---
 
-## 📊 Project Statistics
+## 🎯 Modern Framework Support
 
-**Status**: ✅ Production Ready
+**The Problem**: React/Vue sites use dynamic CSS classes (`.css-17p10p8`) that change with every build.
 
+**Quarry's Solution**: Structural selectors that survive CSS changes:
+
+```yaml
+# ❌ Brittle - breaks on rebuild
+title: h3.css-17p10p8 a
+
+# ✅ Resilient - structural hierarchy
+title: h3 a
 ```
-Total Tests:        197 (100% passing)
-Total Code:         ~5,000 LOC
-Tools:              5 Quarry + Legacy CLI
-Export Formats:     CSV, JSON, SQLite, Parquet
-Frameworks:         9 detected
-Python Version:     3.12+
+
+### Tools for Modern Sites
+
+**1. Selector Audit Tool**
+```bash
+python scripts/audit_schema_selectors.py my_schema.yml
+# Detects brittle selectors, suggests fixes
 ```
+
+**2. Selector Utilities**
+```python
+from quarry.lib.selectors import build_robust_selector
+
+robust = build_robust_selector('h3.css-xyz a', ['tag'])
+# Returns: 'h3 a'
+```
+
+**3. Framework Detection**
+```python
+from quarry.framework_profiles import detect_framework
+
+framework = detect_framework(html, soup, url)
+# Automatically detects React, Vue, WordPress, etc.
+```
+
+📚 **Complete guide**: [docs/MODERN_FRAMEWORKS.md](docs/MODERN_FRAMEWORKS.md)
+
+---
+
+## 📊 Features
+
+- ✅ **Framework Detection** - Automatic detection of 9+ frameworks
+- ✅ **Resilient Selectors** - Survive CSS framework updates  
+- ✅ **Rate Limiting** - Token bucket with exponential backoff
+- ✅ **Robots.txt** - Automatic parsing and compliance
+- ✅ **State Management** - SQLite-based deduplication
+- ✅ **Multiple Exports** - CSV, JSON, SQLite, Parquet
+- ✅ **Validation** - Schema validation with Pydantic
+- ✅ **Testing** - 199 tests, 100% passing
 
 ---
 
@@ -244,93 +150,52 @@ Python Version:     3.12+
 
 ```
 quarry/
-├── quarry/              # Main package
-│   ├── lib/                  # Foundation library
-│   │   ├── http.py          # HTTP client with rate limiting
-│   │   ├── ratelimit.py     # Token bucket rate limiter
-│   │   ├── selectors.py     # CSS selector utilities
-│   │   ├── robots.py        # Robots.txt parser
-│   │   └── policy.py        # Policy enforcement
-│   ├── tools/                # Quarry suite
-│   │   ├── scout/           # HTML analysis tool
-│   │   ├── survey/       # Schema designer
-│   │   ├── excavate/           # Extraction engine
-│   │   ├── polish/          # Data transformation
-│   │   └── ship/           # Data export
-│   ├── framework_profiles/   # Framework detection
-│   ├── connectors/          # Data source connectors
-│   ├── transforms/          # Data transformations
-│   ├── sinks/               # Output writers
-│   ├── quarry.py           # Quarry CLI
-│   ├── cli.py               # Legacy CLI
-│   ├── wizard.py            # Interactive wizard
-│   ├── inspector.py         # HTML analysis
-│   └── core.py              # Job runner
-├── tests/                    # Test suite (197 tests)
-├── docs/                     # Documentation
-│   ├── QUARRY_COMPLETE.md  # Quarry guide
-│   ├── WIZARD.md            # Wizard guide
-│   ├── FRAMEWORK_PROFILES.md
-│   ├── ARCHITECTURE_V2.md
-│   ├── TESTING.md
-│   └── TROUBLESHOOTING.md
-├── examples/                 # Example job files
-└── scripts/                  # Utility scripts
+├── lib/                 # Core utilities
+│   ├── selectors.py    # CSS selector utilities
+│   ├── http.py         # HTTP client with rate limiting
+│   └── robots.py       # Robots.txt parser
+├── tools/              # Quarry suite
+│   ├── scout/          # HTML analysis
+│   ├── survey/         # Schema designer
+│   ├── excavate/       # Extraction engine
+│   ├── polish/         # Data transformation
+│   └── ship/           # Data export
+├── framework_profiles/ # Framework detection
+├── connectors/         # Data source connectors
+├── transforms/         # Data transformations
+└── sinks/              # Output writers
 ```
 
 ---
 
 ## 📖 Documentation
 
-### User Guides
-- **[Quarry Suite](docs/QUARRY.md)** - Complete guide to the 5 extraction tools
-- **[Framework Profiles](docs/FRAMEWORK_PROFILES.md)** - Understanding framework detection
-- **[Infinite Scroll API Guide](docs/INFINITE_SCROLL_API_GUIDE.md)** - Finding API endpoints for dynamic sites
-- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
-
-### Developer Guides
-- **[Architecture](docs/ARCHITECTURE_V2.md)** - System design and structure
-- **[Testing](docs/TESTING.md)** - Running and writing tests
-- **[Security](docs/SECURITY.md)** - Bot evasion and best practices
-
-### Quick Reference
-- **[Examples](examples/jobs/)** - Pre-built job templates
-- **[Contributing](CONTRIBUTING.md)** - How to contribute
+- **[Installation](INSTALLATION.md)** - Setup and requirements
+- **[Usage Guide](USAGE_GUIDE.md)** - Complete usage documentation
+- **[Modern Frameworks](docs/MODERN_FRAMEWORKS.md)** - React/Vue/Next.js guide
+- **[Selector Reference](docs/SELECTOR_QUICK_REFERENCE.md)** - Quick selector patterns
+- **[Wizard Guide](docs/WIZARD.md)** - YAML-based extraction
+- **[Architecture](docs/ARCHITECTURE_V2.md)** - System design
+- **[Testing](docs/TESTING.md)** - Running tests
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues
 
 ---
 
 ## 🧪 Development
 
-### Running Tests
-
 ```bash
-# Run all tests
-pytest
+# Run tests
+pytest                          # All tests
+pytest tests/test_scout.py -v   # Specific tool
 
-# Run with coverage
-pytest --cov=quarry --cov-report=html
+# Code quality
+ruff format .                   # Format code
+ruff check .                    # Lint code
 
-# Run specific tool tests
-pytest tests/test_probe.py -v
-pytest tests/test_forge.py -v
-pytest tests/test_polish.py -v
-pytest tests/test_crate.py -v
-
-# Quick test
-make test
-```
-
-### Code Quality
-
-```bash
-# Format code
-make format
-
-# Lint code  
-make check
-
-# Run all checks
-make all
+# Quick commands
+make test                       # Run tests
+make format                     # Format code
+make check                      # Lint code
 ```
 
 ---
@@ -339,76 +204,37 @@ make all
 
 Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-### Adding Framework Profiles
+**To add a new framework profile:**
 
-To add support for a new framework:
-
-1. Create profile class in `framework_profiles/`
-2. Implement detection with confidence scoring (0-100)
-3. Add field mappings for common field types
-4. Write tests with real-world HTML samples
-5. Update documentation
-
-Example:
 ```python
-class AngularProfile(FrameworkProfile):
-    name = "angular"
+# quarry/framework_profiles/frameworks/my_framework.py
+class MyFrameworkProfile(FrameworkProfile):
+    name = "MyFramework"
     
-    @classmethod
-    def detect(cls, html: str, item_element: Tag | None = None) -> int:
+    def detect(self, html: str, soup: BeautifulSoup, url: str) -> int:
         score = 0
-        if "ng-app" in html:
-            score += 40
-        if "ng-controller" in html:
-            score += 30
-        return min(score, 100)
+        if 'framework-marker' in html:
+            score += 50
+        return score
 ```
-
----
-
-## 🗺️ Roadmap
-
-### Completed ✅
-- Quarry Suite (5 tools)
-- Multi-framework detection
-- 197 comprehensive tests
-- Complete pipeline support
-- CSV/JSON/SQLite exports
-
-### In Progress 🚧
-- PostgreSQL/MySQL exporters
-- Cloud storage exports (S3, GCS)
-- Performance optimization
-
-### Planned 📋
-- API exports (REST, GraphQL)
-- Web UI dashboard
-- Docker deployment
-- Scheduled extraction jobs
-- PyPI packaging
 
 ---
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE)
 
 ---
 
 ## 🙏 Acknowledgments
 
 - [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/) - HTML parsing
-- [Pyarrow](https://arrow.apache.org/docs/python/) - Parquet output
+- [Pyarrow](https://arrow.apache.org/docs/python/) - Parquet support
 - [Click](https://click.palletsprojects.com/) - CLI framework
 - [Rich](https://rich.readthedocs.io/) - Terminal formatting
 - [Pydantic](https://pydantic.dev/) - Data validation
 
 ---
 
-## 📞 Support
-
-- **Documentation**: [docs/](docs/)
-- **Examples**: [examples/jobs/](examples/jobs/)
-- **Issues**: [GitHub Issues](https://github.com/russellbomer/quarry/issues)
-
 **Happy Scraping! 🎉**
+

@@ -13,9 +13,9 @@ from quarry.lib.schemas import ExtractionSchema, load_schema
 from .parser import SchemaParser
 
 
-class ForgeExecutor:
+class ExcavateExecutor:
     """
-    Execute extraction using a schema.
+    Executes schema-based extraction on HTML content.
     
     Handles:
     - Fetching HTML from URLs

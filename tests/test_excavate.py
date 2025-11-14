@@ -1,11 +1,11 @@
-"""Tests for Forge extraction engine."""
+"""Tests for Excavate extraction engine."""
 
 import pytest
 from pathlib import Path
 
 from quarry.lib.schemas import ExtractionSchema, FieldSchema, PaginationSchema
 from quarry.tools.excavate.parser import SchemaParser
-from quarry.tools.excavate.executor import ForgeExecutor
+from quarry.tools.excavate.executor import ExcavateExecutor
 
 
 # Test HTML fixtures
@@ -204,8 +204,8 @@ class TestSchemaParser:
         assert items[0]["title"] == "Item"
 
 
-class TestForgeExecutor:
-    """Test the ForgeExecutor class."""
+class TestExcavateExecutor:
+    """Test the ExcavateExecutor class."""
     
     def test_extract_from_html(self):
         """Test extracting from HTML string."""
@@ -218,7 +218,7 @@ class TestForgeExecutor:
             }
         )
         
-        executor = ForgeExecutor(schema)
+        executor = ExcavateExecutor(schema)
         items = executor.parser.parse(SIMPLE_HTML)
         
         assert len(items) == 2
@@ -232,7 +232,7 @@ class TestForgeExecutor:
             fields={"title": FieldSchema(selector="h3")}
         )
         
-        executor = ForgeExecutor(schema)
+        executor = ExcavateExecutor(schema)
         items = executor.parser.parse(SIMPLE_HTML)
         
         # Manually add metadata like the CLI does
@@ -255,7 +255,7 @@ class TestForgeExecutor:
             fields={"title": FieldSchema(selector="h3")}
         )
         
-        executor = ForgeExecutor(schema)
+        executor = ExcavateExecutor(schema)
         items = executor.parser.parse(SIMPLE_HTML)
         
         # Don't add metadata
@@ -269,7 +269,7 @@ class TestForgeExecutor:
             fields={"title": FieldSchema(selector="h3")}
         )
         
-        executor = ForgeExecutor(schema)
+        executor = ExcavateExecutor(schema)
         
         # Initial stats
         assert executor.stats["urls_fetched"] == 0

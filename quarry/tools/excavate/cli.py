@@ -8,7 +8,7 @@ import questionary
 
 from quarry.lib.schemas import load_schema
 from quarry.lib.session import get_last_schema, set_last_output
-from .executor import ForgeExecutor, write_jsonl
+from .executor import ExcavateExecutor, write_jsonl
 
 
 @click.command()
@@ -215,7 +215,7 @@ def excavate(schema_file, url, file, output, max_pages, no_metadata, pretty, bat
             sys.exit(1)
     
     # Create executor
-    executor = ForgeExecutor(schema)
+    executor = ExcavateExecutor(schema)
     
     # Execute extraction
     try:

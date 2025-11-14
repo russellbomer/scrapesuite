@@ -5,23 +5,24 @@ Welcome to the Quarry documentation. This directory contains comprehensive guide
 ## Quick Links
 
 - **[Main README](../README.md)** - Project overview, installation, quick start
-- **[Framework Profiles Guide](FRAMEWORK_PROFILES.md)** - Complete guide to framework detection and profiles
+- **[Modern Framework Support](MODERN_FRAMEWORKS.md)** ⭐ **Complete guide to React/Vue/Next.js sites**
+- **[Selector Quick Reference](SELECTOR_QUICK_REFERENCE.md)** - DO/DON'T patterns for resilient selectors
 - **[Testing Guide](TESTING.md)** - How to run tests and write new ones
-- **[Architecture](ARCHITECTURE.md)** - System design and limitations
 - **[Troubleshooting](TROUBLESHOOTING.md)** - Common issues and solutions
 
 ## Documentation Structure
 
 ### User Guides
 
+- **[Modern Framework Support](MODERN_FRAMEWORKS.md)** - Complete guide to modern JavaScript frameworks
 - **[Wizard Usage](WIZARD.md)** - Interactive wizard for building scrapers
+- **[Infinite Scroll & API Guide](INFINITE_SCROLL_API_GUIDE.md)** - Extracting paginated content
 - **[Troubleshooting](TROUBLESHOOTING.md)** - Common problems and fixes
 
 ### Developer Guides
 
-- **[Framework Profiles](FRAMEWORK_PROFILES.md)** - Understanding and creating framework profiles
 - **[Testing](TESTING.md)** - Test suite overview and guidelines
-- **[Architecture](ARCHITECTURE.md)** - System architecture and design decisions
+- **[Architecture V2](ARCHITECTURE_V2.md)** - System architecture and design decisions
 - **[Security](SECURITY.md)** - Bot evasion and security best practices
 
 ### Reference

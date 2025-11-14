@@ -1,4 +1,4 @@
-"""Tests for Probe tool."""
+"""Tests for Scout tool."""
 
 from pathlib import Path
 
@@ -8,8 +8,8 @@ from quarry.tools.scout.analyzer import analyze_page
 from quarry.tools.scout.reporter import format_as_json, format_as_terminal
 
 
-class TestProbeAnalyzer:
-    """Test the Probe analyzer."""
+class TestScoutAnalyzer:
+    """Test the Scout analyzer."""
     
     def test_analyze_page_basic(self):
         """Test basic page analysis."""
@@ -79,8 +79,8 @@ class TestProbeAnalyzer:
         assert result["metadata"] == {}
 
 
-class TestProbeReporter:
-    """Test the Probe reporter."""
+class TestScoutReporter:
+    """Test the Scout reporter."""
     
     def test_format_as_json(self):
         """Test JSON formatting."""
@@ -149,7 +149,7 @@ class TestProbeReporter:
         result = format_as_terminal(analysis)
         
         # Should contain key information
-        assert "PROBE ANALYSIS" in result
+        assert "SCOUT ANALYSIS" in result
         assert "Test Page" in result
         assert "bootstrap" in result.lower()
         assert ".item" in result

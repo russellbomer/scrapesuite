@@ -1,0 +1,80 @@
+# Example: NYT US News with Resilient Selectors
+# Demonstrates handling CSS-in-JS dynamic classes
+
+version: "1"
+job: nyt_us_news_resilient
+
+source:
+  kind: html
+  entry: "https://www.nytimes.com/section/us"
+  parser: generic  # Use generic connector with selectors
+  rate_limit_rps: 1.0
+  cursor:
+    field: url
+    stop_when_seen: true
+
+# Resilient selectors that work across CSS changes
+selectors:
+  # Item selector - semantic HTML is stable
+  item: article
+  
+  # Field selectors - structural, not class-dependent
+  fields:
+    # Structural hierarchy: "h3 a" works regardless of class changes
+    title: h3 a
+    
+    # Attribute extraction for URLs
+    url: a::attr(href)
+    
+    # Fallback chain approach (commented - shows future enhancement)
+    # description:
+    #   - p.css-1jhf0lz  # Current specific (fast if it works)
+    #   - article > div > p  # Structural fallback
+    #   - p  # Generic fallback
+    
+    # Current single selector (structural)
+    description: p
+    
+    # Author uses semantic span structure
+    author: span.css-1baulvz
+    
+    # Image extraction
+    image: img::attr(src)
+    
+    # Date from time element (semantic HTML)
+    date: time::attr(datetime)
+
+transform:
+  pipeline:
+    - normalize: generic
+
+sink:
+  kind: parquet
+  path: data/cache/nyt_us_news/%Y%m%dT%H%M%SZ.parquet
+
+policy:
+  robots: allow
+  allowlist:
+    - nytimes.com
+
+# Notes on selector resilience:
+# 
+# 1. WHY THESE SELECTORS WORK:
+#    - "h3 a" targets tag hierarchy, not dynamic classes
+#    - "article" is semantic HTML5, unlikely to change
+#    - "time" and "img" are standard HTML elements
+#
+# 2. WHAT TO AVOID:
+#    - .css-17p10p8 (changes with every build)
+#    - .emotion-abc123 (CSS-in-JS hash)
+#    - Complex class chains like .css-x > .css-y > .css-z
+#
+# 3. MAINTENANCE:
+#    - If selectors break, NYT likely changed HTML structure, not just CSS
+#    - Run wizard to re-analyze: scrapesuite wizard
+#    - Update structural selectors based on new hierarchy
+#
+# 4. TESTING:
+#    - Validate with small sample: scrapesuite run jobs/nyt_us_news_resilient.yml --max-items=5
+#    - Check for None values: df.isnull().sum()
+#    - If >20% fields are None, selectors need update

@@ -3,8 +3,8 @@
 import json
 from pathlib import Path
 
-from scrapesuite.core import load_yaml, run_job
-from scrapesuite.sinks.parquet import ParquetSink
+from quarry.core import load_yaml, run_job
+from quarry.sinks.parquet import ParquetSink
 
 
 def main() -> None:

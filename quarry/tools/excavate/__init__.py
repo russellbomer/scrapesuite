@@ -1,5 +1,5 @@
 """
-Forge - Extraction Execution Engine
+Excavate - Extraction Execution Engine
 
 Executes schema-driven extraction at scale with:
 - Schema-based HTML parsing
@@ -9,7 +9,7 @@ Executes schema-driven extraction at scale with:
 - Progress tracking
 """
 
-from .executor import ForgeExecutor, write_jsonl, append_jsonl
+from .executor import ExcavateExecutor, write_jsonl, append_jsonl
 from .parser import SchemaParser
 
-__all__ = ["ForgeExecutor", "SchemaParser", "write_jsonl", "append_jsonl"]
+__all__ = ["ExcavateExecutor", "SchemaParser", "write_jsonl", "append_jsonl"]

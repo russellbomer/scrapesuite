@@ -657,7 +657,7 @@ def _analyze_html_and_build_selectors(entry_url: str) -> dict[str, Any] | None: 
 def run_wizard() -> None:  # noqa: PLR0912, PLR0915
     """Run interactive wizard to generate job YAML."""
     if console:
-        console.print(Panel.fit("Foundry Job Wizard", style="bold blue"))
+        console.print(Panel.fit("Quarry Job Wizard", style="bold blue"))
 
     # Template selection
     template = _prompt_select(
