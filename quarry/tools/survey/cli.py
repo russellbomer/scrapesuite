@@ -39,8 +39,7 @@ def survey():
 @click.option(
     "--output", "-o",
     type=click.Path(),
-    default="schema.yml",
-    help="Output file (default: schema.yml)"
+    help="Output file (default: schemas/<name>.yml)"
 )
 @click.option(
     "--preview/--no-preview",
@@ -88,32 +87,29 @@ def create(from_probe, url, file, output, preview, job, job_name, sink_kind):
             allow_cancel=False
         )
     
-    # Set default output for job mode
-    if job and output == "schema.yml":
-        output = f"jobs/{job_name}.yml"
-    # Load analysis if provided
-    analysis = None
-    if from_probe:
-        click.echo(f"📊 Loading Probe analysis from {from_probe}", err=True)
-        try:
-            analysis = load_analysis_from_file(from_probe)
-        except Exception as e:
-            click.echo(f"Error loading analysis: {e}", err=True)
-            sys.exit(1)
-    
-    # Load HTML if file provided
-    html = None
-    if file:
-        click.echo(f"📄 Loading HTML from {file}", err=True)
-        try:
-            html = Path(file).read_text(encoding="utf-8")
-        except Exception as e:
-            click.echo(f"Error loading file: {e}", err=True)
-            sys.exit(1)
-    
-    # Build schema interactively
+    # Build schema interactively first to get the name
     click.echo("🔨 Starting interactive builder...\n", err=True)
     try:
+        # Load analysis if provided
+        analysis = None
+        if from_probe:
+            click.echo(f"📊 Loading Probe analysis from {from_probe}", err=True)
+            try:
+                analysis = load_analysis_from_file(from_probe)
+            except Exception as e:
+                click.echo(f"Error loading analysis: {e}", err=True)
+                sys.exit(1)
+        
+        # Load HTML if file provided
+        html = None
+        if file:
+            click.echo(f"📄 Loading HTML from {file}", err=True)
+            try:
+                html = Path(file).read_text(encoding="utf-8")
+            except Exception as e:
+                click.echo(f"Error loading file: {e}", err=True)
+                sys.exit(1)
+        
         schema = build_schema_interactive(url=url, analysis=analysis, html=html)
     except KeyboardInterrupt:
         click.echo("\n\nCancelled by user", err=True)
@@ -121,6 +117,15 @@ def create(from_probe, url, file, output, preview, job, job_name, sink_kind):
     except Exception as e:
         click.echo(f"\nError building schema: {e}", err=True)
         sys.exit(1)
+    
+    # Set default output path based on schema name
+    if not output:
+        if job:
+            output = f"jobs/{job_name or schema.name}.yml"
+        else:
+            output = f"schemas/{schema.name}.yml"
+    elif job and output == "schema.yml":
+        output = f"jobs/{job_name}.yml"
     
     # Preview extraction if requested
     if preview:
