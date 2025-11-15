@@ -226,7 +226,7 @@ def build_schema_interactive(
                             [
                                 f"Framework: {top_framework}",
                                 f"Detected containers: {len(analysis.get('containers') or [])}",
-                                f"Suggested selector: {analysis.get('suggestions', {}).get('item_selector') or 'n/a'}",
+                                f"Suggested item selector (default shown below): {analysis.get('suggestions', {}).get('item_selector') or 'n/a'}",
                             ]
                         ),
                         title="Scout Insights",
@@ -331,18 +331,61 @@ def build_schema_interactive(
                     console.print(f"  • {fname}: {fschema.selector}")
 
                 console.print()
+                suggested_fields = []
+                if applied_matches:
+                    suggested_fields = applied_matches
+                elif candidate_fields:
+                    suggested_fields = candidate_fields[:5]
+
                 if Confirm.ask("Add more fields?", default=False):
+                    selector_options: list[str] = []
+                    if suggested_fields:
+                        console.print("\n[bold]Selector suggestions from Scout analysis:[/bold]")
+                        for idx, match in enumerate(suggested_fields, 1):
+                            label = match.get("field") or match.get("name") or "field"
+                            console.print(
+                                f"  {idx}. [cyan]{match['selector']}[/cyan]"
+                                f"  ({label}, support={match.get('support', 1)})"
+                            )
+                            selector_options.append(match["selector"])
+                        console.print(
+                            "(Enter number to use a suggestion, or provide your own selector)"
+                        )
+                        console.print()
+
                     # Add custom fields
                     while True:
                         field_name = Prompt.ask("Field name (or press Enter to finish)", default="")
                         if not field_name.strip():
                             break
 
-                        selector = Prompt.ask(f"Selector for '{field_name}'")
+                        default_selector = selector_options[0] if selector_options else ""
+                        selector_input = Prompt.ask(
+                            f"Selector for '{field_name}'",
+                            default=str(1) if selector_options else default_selector,
+                        )
+
+                        if selector_input.isdigit() and selector_options:
+                            index = int(selector_input) - 1
+                            if 0 <= index < len(selector_options):
+                                selector = selector_options[index]
+                            else:
+                                console.print(
+                                    "[yellow]Invalid choice, please enter a valid selector.[/yellow]"
+                                )
+                                continue
+                        else:
+                            selector = selector_input
+
+                        if not selector.strip():
+                            console.print("[yellow]Selector cannot be empty.[/yellow]")
+                            continue
+
                         attribute = Prompt.ask("Attribute (optional)", default="")
 
                         fields[field_name] = FieldSchema(
-                            selector=selector, attribute=attribute if attribute.strip() else None
+                            selector=selector.strip(),
+                            attribute=attribute.strip() if attribute.strip() else None,
                         )
                         console.print(f"[green]✓[/green] Added: {field_name}")
 

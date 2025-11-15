@@ -123,7 +123,7 @@ def _create_schema_flow() -> str | None:
             Panel(
                 f"Frameworks: {framework_summary}\n"
                 f"Candidate containers: {container_count}\n"
-                f"Suggested selector: {suggested_selector}",
+                f"Suggested item selector (prefills next step): {suggested_selector}",
                 title="Scout Summary",
                 title_align="left",
                 border_style="blue",
