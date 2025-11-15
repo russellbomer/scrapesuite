@@ -379,6 +379,16 @@ def _generate_suggestions(
         except Exception:
             items = []
 
+        combined_items = _gather_similar_items(
+            soup,
+            containers,
+            original_selector,
+            limit=75,
+        )
+
+        if combined_items:
+            items = combined_items
+
         generalized_selector = _generalize_item_selector(
             soup,
             items,
@@ -388,11 +398,13 @@ def _generate_suggestions(
 
         suggestions["item_selector"] = generalized_selector
 
-        if generalized_selector != original_selector:
-            try:
-                items = soup.select(generalized_selector)
-            except Exception:
-                pass
+        try:
+            refreshed_items = soup.select(generalized_selector)
+        except Exception:
+            refreshed_items = []
+
+        if refreshed_items:
+            items = refreshed_items
     else:
         items = []
 
@@ -520,6 +532,45 @@ def _generalize_item_selector(
     return original_selector
 
 
+def _gather_similar_items(
+    soup: BeautifulSoup,
+    containers: list[dict[str, Any]],
+    base_selector: str,
+    limit: int = 75,
+) -> list[Tag]:
+    """Collect items from containers that share structural selectors."""
+
+    if not base_selector:
+        return []
+
+    collected: list[Tag] = []
+    seen_selectors: set[str] = set()
+
+    for container in containers:
+        selector = container.get("child_selector")
+        if not selector or selector in seen_selectors:
+            continue
+
+        if not _selectors_equivalent(base_selector, selector):
+            continue
+
+        seen_selectors.add(selector)
+
+        try:
+            matches = soup.select(selector)
+        except Exception:
+            continue
+
+        if not matches:
+            continue
+
+        collected.extend(matches)
+        if len(collected) >= limit:
+            break
+
+    return collected[:limit]
+
+
 def _class_selector_candidates(items: list[Tag], child_tag: str | None) -> list[str]:
     """Produce selector candidates using stable class names shared by items."""
 
@@ -595,6 +646,23 @@ def _is_stable_css_token(value: str) -> bool:
         return False
 
     return True
+
+
+def _selectors_equivalent(a: str | None, b: str | None) -> bool:
+    """Check if two selectors are structurally equivalent after normalization."""
+
+    if not a or not b:
+        return False
+
+    return _normalize_selector(a) == _normalize_selector(b)
+
+
+def _normalize_selector(selector: str) -> str:
+    """Normalize selector by simplifying and stripping numeric segments."""
+
+    simplified = simplify_selector(selector) if selector else selector
+    normalized = _strip_numeric_segments(simplified)
+    return normalized or selector
 
 
 def _detect_infinite_scroll(soup: BeautifulSoup) -> dict[str, Any]:
