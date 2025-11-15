@@ -631,7 +631,7 @@ def build_schema_interactive(
             ("a.next", "Next link (class='next')"),
             ("a[rel='next']", "Next link (rel='next')"),
             (".pagination a:last-child", "Last pagination link"),
-            ("a:contains('Next')", "Link containing 'Next'"),
+            ("a:-soup-contains('Next')", "Link containing 'Next'"),
         ]
 
         for selector, desc in patterns:
