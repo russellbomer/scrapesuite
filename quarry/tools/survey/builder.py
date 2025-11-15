@@ -567,6 +567,7 @@ def build_schema_interactive(
         console.print()
 
         if Confirm.ask("Use all suggested fields?", default=True):
+            before_count = len(fields)
             for field in suggested_fields:
                 field_name = field["name"]
                 selector = field["selector"]
@@ -579,39 +580,56 @@ def build_schema_interactive(
                     attribute = "src"
 
                 fields[field_name] = FieldSchema(selector=selector, attribute=attribute)
-
-            console.print(f"[green]✓[/green] Added {len(fields)} fields")
+            added_count = len(fields) - before_count
+            console.print(f"[green]✓[/green] Added {added_count} fields")
         else:
             console.print(
-                "\n[dim]Select individual fields (comma-separated numbers, e.g., '1,3,5' or 'all'):[/dim]"
+                "\n[dim]Select individual fields (comma-separated numbers, e.g., '1,3,5', 'all', or 'none'):[/dim]"
             )
             selection = Prompt.ask("Fields to include", default="all")
 
-            if selection.lower() == "all":
-                selected_indices = list(range(1, len(suggested_fields) + 1))
-            else:
-                try:
-                    selected_indices = [int(x.strip()) for x in selection.split(",")]
-                except ValueError:
-                    console.print("[yellow]Invalid selection, using all fields[/yellow]")
+            selected_indices: list[int]
+            while True:
+                normalized = selection.strip().lower()
+                if normalized in {"all", "*"}:
                     selected_indices = list(range(1, len(suggested_fields) + 1))
+                    break
+                if normalized in {"none", ""}:
+                    selected_indices = []
+                    break
 
+                try:
+                    selected_indices = [int(x.strip()) for x in selection.split(",") if x.strip()]
+                except ValueError:
+                    console.print("[yellow]Invalid selection. Try again.[/yellow]")
+                    selection = Prompt.ask("Fields to include", default="none")
+                    continue
+
+                valid_indices = [idx for idx in selected_indices if 1 <= idx <= len(suggested_fields)]
+                if valid_indices:
+                    selected_indices = valid_indices
+                    break
+
+                console.print("[yellow]No valid field numbers found. Try again or enter 'none'.[/yellow]")
+                selection = Prompt.ask("Fields to include", default="none")
+
+            before_count = len(fields)
             for idx in selected_indices:
-                if 1 <= idx <= len(suggested_fields):
-                    field = suggested_fields[idx - 1]
-                    field_name = field["name"]
-                    selector = field["selector"]
+                field = suggested_fields[idx - 1]
+                field_name = field["name"]
+                selector = field["selector"]
 
-                    # Auto-detect attributes
-                    attribute = None
-                    if "href" in selector.lower() or field_name.lower() in ["url", "link"]:
-                        attribute = "href"
-                    elif "src" in selector.lower() or field_name.lower() in ["image", "img"]:
-                        attribute = "src"
+                # Auto-detect attributes
+                attribute = None
+                if "href" in selector.lower() or field_name.lower() in ["url", "link"]:
+                    attribute = "href"
+                elif "src" in selector.lower() or field_name.lower() in ["image", "img"]:
+                    attribute = "src"
 
-                    fields[field_name] = FieldSchema(selector=selector, attribute=attribute)
+                fields[field_name] = FieldSchema(selector=selector, attribute=attribute)
 
-            console.print(f"[green]✓[/green] Added {len(fields)} fields")
+            added_count = len(fields) - before_count
+            console.print(f"[green]✓[/green] Added {added_count} fields")
 
     # Manual field entry
     console.print()

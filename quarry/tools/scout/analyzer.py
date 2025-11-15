@@ -1,12 +1,13 @@
 """Core analysis engine for Probe tool."""
 
+import re
 from collections import Counter
 from typing import Any
 
 from bs4 import BeautifulSoup, Tag
 
 from quarry.framework_profiles import _get_element_classes, detect_all_frameworks
-from quarry.lib.selectors import build_robust_selector
+from quarry.lib.selectors import build_robust_selector, simplify_selector
 
 
 def analyze_page(html: str, url: str | None = None) -> dict[str, Any]:
@@ -364,70 +365,86 @@ def _generate_suggestions(
     # Best container guess
     if containers:
         suggestions["best_container"] = containers[0]
-        suggestions["item_selector"] = containers[0]["child_selector"]
     else:
         suggestions["best_container"] = None
-        suggestions["item_selector"] = None
+
+    suggestions["item_selector"] = None
 
     # Field suggestions based on first container
     if containers and containers[0]:
         best = containers[0]
+        original_selector = best["child_selector"]
         try:
-            items = soup.select(best["child_selector"])
+            items = soup.select(original_selector)
         except Exception:
             items = []
 
-        field_pool: dict[tuple[str, str, str | None], dict[str, Any]] = {}
+        generalized_selector = _generalize_item_selector(
+            soup,
+            items,
+            original_selector,
+            best.get("child_tag"),
+        )
 
-        for item in items[:25]:  # limit for performance
-            candidates = _suggest_fields(item)
-            for candidate in candidates:
-                key = (
-                    candidate.get("name"),
-                    candidate.get("selector"),
-                    candidate.get("attribute"),
-                )
+        suggestions["item_selector"] = generalized_selector
 
-                if not key[0] or not key[1]:
-                    continue
+        if generalized_selector != original_selector:
+            try:
+                items = soup.select(generalized_selector)
+            except Exception:
+                pass
+    else:
+        items = []
 
-                entry = field_pool.setdefault(
-                    key,
-                    {
-                        "name": candidate["name"],
-                        "selector": candidate["selector"],
-                        "attribute": candidate.get("attribute"),
-                        "sample": candidate.get("sample", ""),
-                        "support": 0,
-                        "count": 0,
-                    },
-                )
+    field_pool: dict[tuple[str, str, str | None], dict[str, Any]] = {}
 
-                entry["support"] += 1
-                entry["count"] += candidate.get("count", 0) or 0
-                if not entry["sample"]:
-                    entry["sample"] = candidate.get("sample", "")
-
-        if field_pool:
-            ranked = sorted(
-                field_pool.values(),
-                key=lambda item: (item["support"], item["count"]),
-                reverse=True,
+    for item in items[:25]:  # limit for performance
+        candidates = _suggest_fields(item)
+        for candidate in candidates:
+            key = (
+                candidate.get("name"),
+                candidate.get("selector"),
+                candidate.get("attribute"),
             )
 
-            selected: list[dict[str, Any]] = []
-            seen_fields: set[str] = set()
+            if not key[0] or not key[1]:
+                continue
 
-            for candidate in ranked:
-                name = candidate["name"]
-                if name in seen_fields:
-                    continue
-                selected.append(candidate)
-                seen_fields.add(name)
+            entry = field_pool.setdefault(
+                key,
+                {
+                    "name": candidate["name"],
+                    "selector": candidate["selector"],
+                    "attribute": candidate.get("attribute"),
+                    "sample": candidate.get("sample", ""),
+                    "support": 0,
+                    "count": 0,
+                },
+            )
 
-            suggestions["field_candidates"] = selected
-        else:
-            suggestions["field_candidates"] = []
+            entry["support"] += 1
+            entry["count"] += candidate.get("count", 0) or 0
+            if not entry["sample"]:
+                entry["sample"] = candidate.get("sample", "")
+
+    if field_pool:
+        ranked = sorted(
+            field_pool.values(),
+            key=lambda item: (item["support"], item["count"]),
+            reverse=True,
+        )
+
+        selected: list[dict[str, Any]] = []
+        seen_fields: set[str] = set()
+
+        for candidate in ranked:
+            name = candidate["name"]
+            if name in seen_fields:
+                continue
+            selected.append(candidate)
+            seen_fields.add(name)
+
+        suggestions["field_candidates"] = selected
     else:
         suggestions["field_candidates"] = []
 
@@ -443,6 +460,141 @@ def _generate_suggestions(
         suggestions["framework_hint"] = None
 
     return suggestions
+
+
+def _generalize_item_selector(
+    soup: BeautifulSoup,
+    items: list[Tag],
+    original_selector: str,
+    child_tag: str | None,
+) -> str:
+    """Broaden suggested item selector when the original is overly specific."""
+
+    if not original_selector:
+        return original_selector
+
+    candidates: list[str] = []
+
+    # Prefer stable class-based selectors shared across items
+    candidates.extend(_class_selector_candidates(items, child_tag))
+
+    simplified = simplify_selector(original_selector)
+    if simplified and simplified != original_selector:
+        candidates.append(simplified)
+
+    stripped = _strip_numeric_segments(original_selector)
+    if stripped and stripped not in candidates:
+        candidates.append(stripped)
+
+    if child_tag and child_tag not in candidates:
+        candidates.append(child_tag)
+
+    seen: set[str] = set()
+    for selector in candidates:
+        if not selector or selector in seen:
+            continue
+        seen.add(selector)
+
+        try:
+            matches = soup.select(selector)
+        except Exception:
+            continue
+
+        if not matches:
+            continue
+
+        # Require selector to cover at least current items (or be the first workable option)
+        if items and len(matches) < len(items):
+            continue
+
+        # Avoid selectors that explode across the whole document
+        if items:
+            max_allowed = max(500, len(items) * 8)
+        else:
+            max_allowed = 800
+        if len(matches) > max_allowed:
+            continue
+
+        return selector
+
+    return original_selector
+
+
+def _class_selector_candidates(items: list[Tag], child_tag: str | None) -> list[str]:
+    """Produce selector candidates using stable class names shared by items."""
+
+    if not items:
+        return []
+
+    class_counts: Counter[str] = Counter()
+    total_items = len(items)
+
+    for item in items:
+        classes = {cls for cls in (item.get("class") or []) if _is_stable_css_token(cls)}
+        for cls in classes:
+            class_counts[cls] += 1
+
+    if not class_counts:
+        return []
+
+    threshold = 1 if total_items == 1 else max(2, total_items // 2)
+
+    # Sort by frequency desc, length asc to prefer concise names
+    ordered = sorted(
+        (cls for cls, count in class_counts.items() if count >= threshold),
+        key=lambda name: (-class_counts[name], len(name)),
+    )
+
+    candidates: list[str] = []
+    for cls in ordered:
+        if child_tag:
+            candidates.append(f"{child_tag}.{cls}")
+        candidates.append(f".{cls}")
+
+    # Deduplicate while preserving order
+    seen: set[str] = set()
+    unique: list[str] = []
+    for candidate in candidates:
+        if candidate not in seen:
+            seen.add(candidate)
+            unique.append(candidate)
+
+    return unique
+
+
+def _strip_numeric_segments(selector: str) -> str:
+    """Remove obviously year-based IDs/classes and nth-of-type markers."""
+
+    if not selector:
+        return selector
+
+    cleaned = re.sub(r":nth-of-type\(\d+\)", "", selector)
+    cleaned = re.sub(r"#[^\s>]*?(?:19|20)\d{2}[^\s>]*", "", cleaned)
+    cleaned = re.sub(r"\.[^\s>]*?(?:19|20)\d{2}[^\s>]*", "", cleaned)
+    cleaned = re.sub(r"\s*\>\s*", " > ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    cleaned = re.sub(r"^(>\s*)+", "", cleaned).strip()
+
+    return cleaned or selector
+
+
+def _is_stable_css_token(value: str) -> bool:
+    """Heuristic check to filter out dynamic or numeric-heavy class tokens."""
+
+    if not value or len(value) < 3:
+        return False
+
+    lowered = value.lower()
+    if lowered.startswith(("css-", "sc-", "jsx-", "emotion-", "_", "slick-")):
+        return False
+
+    if re.search(r"\d{4,}", value):
+        return False
+
+    if re.search(r"\d{3,}$", value):
+        return False
+
+    return True
 
 
 def _detect_infinite_scroll(soup: BeautifulSoup) -> dict[str, Any]:
