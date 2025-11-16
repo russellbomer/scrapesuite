@@ -1101,10 +1101,10 @@ export PYTHONHTTPSVERIFY=0
 
 ```bash
 # Option 1: Use interactive mode (prompts when blocked)
-python -m quarry.cli run job.yml --live --interactive
+python -m quarry run job.yml --live --interactive
 
 # Option 2: Bypass robots.txt for testing ONLY (not ethical for production)
-python -m quarry.cli run job.yml --live --ignore-robots
+python -m quarry run job.yml --live --ignore-robots
 
 # Option 3: Use bot-friendly alternative sites (recommended)
 # See "Bot-Friendly Test Sites" section below

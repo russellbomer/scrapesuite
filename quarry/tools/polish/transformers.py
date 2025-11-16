@@ -120,33 +120,6 @@ def extract_domain(url: str | None) -> str | None:
         return None
 
 
-def extract_numbers(text: str | None) -> list[float]:
-    """
-    Extract all numbers from text.
-    
-    Args:
-        text: Input text
-    
-    Returns:
-        List of numbers found
-    """
-    if text is None or not isinstance(text, str):
-        return []
-    
-    # Match integers and decimals
-    pattern = r"-?\d+\.?\d*"
-    matches = re.findall(pattern, text)
-    
-    numbers = []
-    for match in matches:
-        try:
-            numbers.append(float(match))
-        except ValueError:
-            continue
-    
-    return numbers
-
-
 def truncate_text(text: str | None, max_length: int = 100) -> str | None:
     """
     Truncate text to maximum length.

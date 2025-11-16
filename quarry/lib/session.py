@@ -73,8 +73,7 @@ def get_last_schema() -> dict[str, Any] | None:
 
 
 def set_last_analysis(data: dict[str, Any]) -> None:
-    """Store the most recent Scout analysis snapshot."""
-
+    """Store metadata from the most recent Scout analysis."""
     session = _load_session()
     payload = dict(data)
     payload["timestamp"] = datetime.now(UTC).isoformat()
@@ -119,7 +118,3 @@ def get_last_output() -> dict[str, Any] | None:
     return session.get("last_output")
 
 
-def clear_session() -> None:
-    """Clear all session data."""
-    if _SESSION_FILE.exists():
-        _SESSION_FILE.unlink()

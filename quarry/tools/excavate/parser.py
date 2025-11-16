@@ -147,8 +147,3 @@ class SchemaParser:
             # Extract text content
             text = element.get_text(strip=True)
             return text if text else None
-
-
-class ParserError(Exception):
-    """Exception raised when parsing fails."""
-    pass

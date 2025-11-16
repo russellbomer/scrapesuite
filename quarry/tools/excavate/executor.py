@@ -105,12 +105,17 @@ class ExcavateExecutor:
         all_items = []
         current_url = start_url
         page_count = 0
+        seen_urls: set[str] = set()
         
         # Use max_pages from schema if not provided
         if max_pages is None:
             max_pages = self.schema.pagination.max_pages
         
         while current_url:
+            if current_url in seen_urls:
+                break
+            seen_urls.add(current_url)
+
             # Check page limit
             if max_pages and page_count >= max_pages:
                 break
@@ -137,6 +142,10 @@ class ExcavateExecutor:
                 
                 # Find next page
                 next_url = self._find_next_page(html, current_url)
+                if next_url and next_url in seen_urls:
+                    next_url = None
+                if next_url and next_url == current_url:
+                    next_url = None
                 
                 # Wait between pages if configured
                 if next_url and self.schema.pagination.wait_seconds > 0:
@@ -191,14 +200,6 @@ class ExcavateExecutor:
     def get_stats(self) -> dict[str, int]:
         """Get execution statistics."""
         return self.stats.copy()
-    
-    def reset_stats(self) -> None:
-        """Reset statistics."""
-        self.stats = {
-            "urls_fetched": 0,
-            "items_extracted": 0,
-            "errors": 0,
-        }
 
 
 def write_jsonl(items: list[dict[str, Any]], output_path: str | Path) -> int:

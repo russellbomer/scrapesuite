@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 from quarry.lib.http import get_html
 from quarry.lib.schemas import ExtractionSchema, FieldSchema, PaginationSchema
 from quarry.tools.scout.analyzer import analyze_page
-from .templates import list_templates, get_template, create_from_template, suggest_template
+from .templates import list_templates, get_template
 
 
 def _clone_fields(fields: dict[str, FieldSchema]) -> dict[str, FieldSchema]:
@@ -115,6 +115,112 @@ def build_schema_interactive(
     except ImportError:
         # Fallback without rich
         return _build_schema_simple(url, analysis, html)
+
+    def _prompt_pagination_config(
+        pagination_candidates: list[dict[str, Any]]
+    ) -> PaginationSchema | None:
+        """Interactive helper for configuring pagination."""
+
+        soup = BeautifulSoup(html, "html.parser") if html else None
+        next_selector: str | None = None
+
+        if pagination_candidates:
+            table = Table(
+                title="Pagination Suggestions",
+                title_style="bold",
+                box=box.SIMPLE,
+                show_header=True,
+                header_style="bold cyan",
+            )
+            table.add_column("#", style="cyan dim", width=4, justify="right")
+            table.add_column("Selector", style="yellow", max_width=50, overflow="fold")
+            table.add_column("Link Text", style="white", max_width=24, overflow="ellipsis")
+            table.add_column("Href", style="cyan", max_width=30, overflow="ellipsis")
+            table.add_column("Hints", style="dim", max_width=30, overflow="ellipsis")
+
+            for idx, candidate in enumerate(pagination_candidates, 1):
+                table.add_row(
+                    str(idx),
+                    candidate.get("selector", "—"),
+                    candidate.get("text", ""),
+                    candidate.get("href", ""),
+                    ", ".join(candidate.get("hints", [])) or "",
+                )
+
+            console.print(table)
+            console.print()
+
+            choice = Prompt.ask(
+                "Select number or enter custom selector",
+                default="1",
+            )
+
+            if choice.isdigit() and 1 <= int(choice) <= len(pagination_candidates):
+                next_selector = pagination_candidates[int(choice) - 1]["selector"]
+            else:
+                next_selector = choice.strip()
+        else:
+            default_selector = "a[rel='next']"
+            next_selector = Prompt.ask(
+                "Next page link selector",
+                default=default_selector,
+            ).strip()
+
+        if not next_selector:
+            console.print(
+                "[yellow]Pagination selector cannot be empty. Skipping pagination setup.[/yellow]"
+            )
+            return None
+
+        sample_href = None
+        if soup:
+            try:
+                sample_link = soup.select_one(next_selector)
+            except Exception:
+                sample_link = None
+
+            if sample_link:
+                sample_href = sample_link.get("href") or ""
+                if sample_href:
+                    console.print(
+                        f"[green]✓[/green] Found next link example: [cyan]{sample_href}[/cyan]"
+                    )
+                else:
+                    console.print(
+                        "[yellow]Selector matched an element without href. Check the target page structure.[/yellow]"
+                    )
+            else:
+                console.print(
+                    "[yellow]Selector did not match the provided HTML. You may need to adjust it.[/yellow]"
+                )
+
+        wait_input = Prompt.ask(
+            "Seconds to wait between pages", default="1.0"
+        ).strip()
+        try:
+            wait_seconds = float(wait_input) if wait_input else 1.0
+        except ValueError:
+            console.print("[yellow]Invalid wait value. Using 1.0 seconds.[/yellow]")
+            wait_seconds = 1.0
+
+        max_pages_input = Prompt.ask(
+            "Max pages (0 for unlimited)", default="0"
+        ).strip()
+        max_pages_value: int | None
+        try:
+            if max_pages_input and int(max_pages_input) > 0:
+                max_pages_value = int(max_pages_input)
+            else:
+                max_pages_value = None
+        except ValueError:
+            console.print("[yellow]Invalid max pages value. Using unlimited.[/yellow]")
+            max_pages_value = None
+
+        return PaginationSchema(
+            next_selector=next_selector,
+            max_pages=max_pages_value,
+            wait_seconds=wait_seconds,
+        )
 
     # Step 1: Schema metadata
     console.print(
@@ -401,15 +507,16 @@ def build_schema_interactive(
                 )
             )
 
-            pagination = None
-            if Confirm.ask("Enable pagination?", default=False):
-                next_selector = Prompt.ask("Next page link selector", default="a.next")
-                max_pages_str = Prompt.ask("Max pages (leave empty for unlimited)", default="")
-
-                pagination = PaginationSchema(
-                    next_selector=next_selector,
-                    max_pages=int(max_pages_str) if max_pages_str.strip() else None,
+            pagination: PaginationSchema | None = None
+            pagination_candidates: list[dict[str, Any]] = []
+            if analysis:
+                pagination_candidates = (
+                    (analysis.get("suggestions") or {}).get("pagination_candidates") or []
                 )
+
+            enable_default = bool(pagination_candidates)
+            if Confirm.ask("Enable pagination?", default=enable_default):
+                pagination = _prompt_pagination_config(pagination_candidates)
 
             # Build schema from template
             schema = ExtractionSchema(
@@ -480,6 +587,26 @@ def build_schema_interactive(
         )
     )
 
+    item_selector: str | None = None
+    suggested_selector: str | None = None
+    if analysis:
+        suggested_selector = (analysis.get("suggestions") or {}).get("item_selector")
+
+    if suggested_selector:
+        console.print(
+            Panel(
+                f"[bold]Scout suggestion:[/bold] [cyan]{suggested_selector}[/cyan]\n"
+                "Matches containers that share the same structure (including variants).",
+                title="Suggested Selector",
+                title_align="left",
+                border_style="green",
+                expand=False,
+            )
+        )
+        if Confirm.ask("Use suggested selector?", default=True):
+            item_selector = suggested_selector
+            console.print(f"[green]✓[/green] Using Scout suggestion: [cyan]{item_selector}[/cyan]")
+
     if analysis and analysis.get("containers"):
         # Show suggestions from Probe analysis
         containers = analysis["containers"][:8]
@@ -508,9 +635,19 @@ def build_schema_interactive(
         console.print(table)
         console.print()
 
-        choice = Prompt.ask("Select number or enter custom selector", default="1")
+        default_choice = "1"
+        prompt_message = "Select number or enter custom selector"
+        if item_selector == suggested_selector and item_selector is not None:
+            default_choice = "keep"
+            prompt_message = (
+                "Select number, enter custom selector, or type 'keep' to reuse suggestion"
+            )
 
-        if choice.isdigit() and 1 <= int(choice) <= len(containers):
+        choice = Prompt.ask(prompt_message, default=default_choice)
+
+        if choice.lower() == "keep" and item_selector:
+            console.print(f"[green]✓[/green] Keeping: [cyan]{item_selector}[/cyan]")
+        elif choice.isdigit() and 1 <= int(choice) <= len(containers):
             item_selector = containers[int(choice) - 1].get("child_selector") or containers[
                 int(choice) - 1
             ].get("selector")
@@ -518,9 +655,11 @@ def build_schema_interactive(
         else:
             item_selector = choice
             console.print(f"[green]✓[/green] Using custom: [cyan]{item_selector}[/cyan]")
-    else:
+
+    if not item_selector:
         console.print("[yellow]No containers detected. Enter selector manually.[/yellow]\n")
         item_selector = Prompt.ask("Item selector (CSS)", default=".item")
+        console.print(f"[green]✓[/green] Using custom: [cyan]{item_selector}[/cyan]")
 
     # Step 4: Fields
     console.print()
@@ -680,43 +819,16 @@ def build_schema_interactive(
         )
     )
 
-    pagination = None
-
-    # Check for common pagination patterns
-    if html:
-        soup = BeautifulSoup(html, "html.parser")
-        pagination_candidates = []
-
-        # Common pagination selectors
-        patterns = [
-            ("a.next", "Next link (class='next')"),
-            ("a[rel='next']", "Next link (rel='next')"),
-            (".pagination a:last-child", "Last pagination link"),
-            ("a:-soup-contains('Next')", "Link containing 'Next'"),
-        ]
-
-        for selector, desc in patterns:
-            try:
-                if soup.select(selector):
-                    pagination_candidates.append((selector, desc))
-            except Exception:
-                pass
-
-        if pagination_candidates:
-            console.print("[dim]Detected pagination patterns:[/dim]")
-            for idx, (sel, desc) in enumerate(pagination_candidates, 1):
-                console.print(f"  {idx}. {sel} - {desc}")
-            console.print()
-
-    if Confirm.ask("Enable pagination?", default=False):
-        next_selector = Prompt.ask("Next page link selector", default="a.next")
-        max_pages_str = Prompt.ask("Max pages to scrape (leave empty for unlimited)", default="")
-
-        pagination = PaginationSchema(
-            next_selector=next_selector,
-            max_pages=int(max_pages_str) if max_pages_str.strip() else None,
+    pagination_candidates = []
+    if analysis:
+        pagination_candidates = (
+            (analysis.get("suggestions") or {}).get("pagination_candidates") or []
         )
-        console.print(f"[green]✓[/green] Pagination enabled")
+
+    pagination = None
+    enable_default = bool(pagination_candidates)
+    if Confirm.ask("Enable pagination?", default=enable_default):
+        pagination = _prompt_pagination_config(pagination_candidates)
 
     # Build schema
     schema = ExtractionSchema(

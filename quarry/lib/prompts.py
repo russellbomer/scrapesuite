@@ -6,7 +6,7 @@ from typing import Callable, Optional
 
 import click
 import questionary
-from questionary import ValidationError, Validator
+from questionary import ValidationError
 
 
 class RetryablePrompt:

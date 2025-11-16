@@ -1,0 +1,23 @@
+name: ncpr
+version: 1
+url: https://www.nc.gov/press-releases
+item_selector: '#content section.section .views-element-container .all-press-releases
+  .view-content > div'
+fields:
+  link:
+    selector: a[href]
+    attribute: href
+    required: false
+    multiple: false
+  title:
+    selector: h2
+    required: false
+    multiple: false
+  date:
+    selector: time
+    required: false
+    multiple: false
+pagination:
+  next_selector: '#content section.section .views-element-container .all-press-releases
+    nav .js-pager__items .page-item .page-link'
+  wait_seconds: 1.0

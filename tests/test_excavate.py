@@ -299,6 +299,89 @@ class TestPaginationDetection:
         assert schema.pagination is not None
         assert schema.pagination.next_selector == "a.next"
 
+    def test_fetch_with_pagination_traverses_pages(self, monkeypatch):
+        """Ensure pagination follows next links across pages."""
+
+        base_url = "https://example.com/"
+        pages = {
+            f"{base_url}page1.html": """
+                <html><body>
+                <ul>
+                    <li><span class='title'>P1-A</span></li>
+                    <li><span class='title'>P1-B</span></li>
+                </ul>
+                <a class='next' href='page2.html'>Next</a>
+                </body></html>
+            """,
+            f"{base_url}page2.html": """
+                <html><body>
+                <ul>
+                    <li><span class='title'>P2-A</span></li>
+                </ul>
+                <a class='next' href='page3.html'>Next</a>
+                </body></html>
+            """,
+            f"{base_url}page3.html": """
+                <html><body>
+                <ul>
+                    <li><span class='title'>P3-A</span></li>
+                </ul>
+                </body></html>
+            """,
+        }
+
+        def fake_get_html(url: str) -> str:
+            return pages[url]
+
+        monkeypatch.setattr("quarry.tools.excavate.executor.get_html", fake_get_html)
+
+        schema = ExtractionSchema(
+            name="paginated",
+            item_selector="li",
+            fields={"title": FieldSchema(selector=".title")},
+            pagination=PaginationSchema(next_selector="a.next", wait_seconds=0.0),
+        )
+
+        executor = ExcavateExecutor(schema)
+        items = executor.fetch_with_pagination(f"{base_url}page1.html", include_metadata=False)
+
+        assert len(items) == 4
+        assert executor.stats["urls_fetched"] == 3
+        assert executor.stats["errors"] == 0
+
+    def test_fetch_with_pagination_stops_on_loop(self, monkeypatch):
+        """Ensure pagination stops when next link repeats a seen page."""
+
+        base_url = "https://loop.test/"
+        pages = {
+            f"{base_url}page1.html": """
+                <html><body>
+                <ul>
+                    <li><span class='title'>Loop-A</span></li>
+                </ul>
+                <a class='next' href='page1.html'>Next</a>
+                </body></html>
+            """,
+        }
+
+        monkeypatch.setattr(
+            "quarry.tools.excavate.executor.get_html",
+            lambda url: pages[url],
+        )
+
+        schema = ExtractionSchema(
+            name="loop",
+            item_selector="li",
+            fields={"title": FieldSchema(selector=".title")},
+            pagination=PaginationSchema(next_selector="a.next", wait_seconds=0.0),
+        )
+
+        executor = ExcavateExecutor(schema)
+        items = executor.fetch_with_pagination(f"{base_url}page1.html", include_metadata=False)
+
+        assert len(items) == 1
+        assert executor.stats["urls_fetched"] == 1
+
 
 class TestIntegration:
     """Integration tests using real fixture files."""

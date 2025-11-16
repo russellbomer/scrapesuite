@@ -1,6 +1,5 @@
 """Policy enforcement: allowlist, robots, rate limiting."""
 
-from dataclasses import dataclass
 from urllib.parse import urlparse
 
 from quarry.lib.robots import check_robots as _check_robots
@@ -34,11 +33,3 @@ def check_robots(url: str, user_agent: str = "Quarry") -> bool:
     Returns True if allowed, False if disallowed.
     """
     return _check_robots(url, user_agent)
-
-
-@dataclass
-class RateProfile:
-    """Rate limiting profile."""
-
-    rps: float = 1.0
-    burst: int = 1

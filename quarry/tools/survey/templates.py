@@ -1,6 +1,6 @@
 """Schema templates for common data extraction patterns."""
 
-from quarry.lib.schemas import ExtractionSchema, FieldSchema
+from quarry.lib.schemas import FieldSchema
 
 
 # Template definitions
@@ -655,71 +655,3 @@ def list_templates() -> list[dict]:
     ]
 
 
-def create_from_template(
-    template_name: str,
-    schema_name: str,
-    url: str | None = None,
-    item_selector: str | None = None,
-    custom_fields: dict[str, FieldSchema] | None = None
-) -> ExtractionSchema:
-    """
-    Create an extraction schema from a template.
-    
-    Args:
-        template_name: Name of the template to use
-        schema_name: Name for the new schema
-        url: Optional target URL
-        item_selector: Optional custom item selector (uses template default if not provided)
-        custom_fields: Optional additional fields to add/override
-    
-    Returns:
-        ExtractionSchema instance
-    """
-    template = get_template(template_name)
-    
-    # Use custom selector or template default
-    if not item_selector:
-        item_selector = template["common_selectors"][0]
-    
-    # Start with template fields
-    fields = dict(template["fields"])
-    
-    # Merge custom fields
-    if custom_fields:
-        fields.update(custom_fields)
-    
-    return ExtractionSchema(
-        name=schema_name,
-        description=template["description"],
-        url=url,
-        item_selector=item_selector,
-        fields=fields
-    )
-
-
-def suggest_template(detected_fields: list[str]) -> str | None:
-    """
-    Suggest a template based on detected field names.
-    
-    Args:
-        detected_fields: List of field names detected in the page
-    
-    Returns:
-        Template key that best matches, or None
-    """
-    field_set = set(f.lower() for f in detected_fields)
-    
-    # Score each template
-    scores = {}
-    for key, template in TEMPLATES.items():
-        template_fields = set(template["fields"].keys())
-        # How many template fields are in detected fields
-        overlap = len(field_set & template_fields)
-        if overlap > 0:
-            scores[key] = overlap
-    
-    # Return template with highest score
-    if scores:
-        return max(scores.items(), key=lambda x: x[1])[0]
-    
-    return None

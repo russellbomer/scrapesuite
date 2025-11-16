@@ -394,6 +394,7 @@ def _generate_suggestions(
             items,
             original_selector,
             best.get("child_tag"),
+            containers,
         )
 
         suggestions["item_selector"] = generalized_selector
@@ -460,6 +461,9 @@ def _generate_suggestions(
     else:
         suggestions["field_candidates"] = []
 
+    # Pagination link suggestions
+    suggestions["pagination_candidates"] = _detect_pagination_links(soup)
+
     # Framework-specific suggestions
     if frameworks:
         top_framework = frameworks[0]
@@ -479,20 +483,28 @@ def _generalize_item_selector(
     items: list[Tag],
     original_selector: str,
     child_tag: str | None,
+    containers: list[dict[str, Any]],
 ) -> str:
     """Broaden suggested item selector when the original is overly specific."""
 
     if not original_selector:
         return original_selector
 
-    candidates: list[str] = []
+    id_prefix_candidates = _id_prefix_selector_candidates(
+        containers, original_selector, child_tag
+    )
 
-    # Prefer stable class-based selectors shared across items
-    candidates.extend(_class_selector_candidates(items, child_tag))
+    candidates: list[str] = []
+    if original_selector:
+        candidates.append(original_selector)
+    candidates.extend(id_prefix_candidates)
 
     simplified = simplify_selector(original_selector)
     if simplified and simplified != original_selector:
         candidates.append(simplified)
+
+    # Prefer stable class-based selectors shared across items (after structural variants)
+    candidates.extend(_class_selector_candidates(items, child_tag))
 
     stripped = _strip_numeric_segments(original_selector)
     if stripped and stripped not in candidates:
@@ -500,6 +512,15 @@ def _generalize_item_selector(
 
     if child_tag and child_tag not in candidates:
         candidates.append(child_tag)
+
+    # If we found an ID prefix candidate, also consider the bare prefix without explicit child tag
+    if id_prefix_candidates:
+        for candidate in id_prefix_candidates:
+            if candidate.endswith(" > *"):
+                continue
+            prefix = candidate.split(" > ")[0]
+            if prefix and f"{prefix} > *" not in candidates:
+                candidates.append(f"{prefix} > *")
 
     seen: set[str] = set()
     for selector in candidates:
@@ -613,6 +634,38 @@ def _class_selector_candidates(items: list[Tag], child_tag: str | None) -> list[
     return unique
 
 
+def _id_prefix_selector_candidates(
+    containers: list[dict[str, Any]],
+    reference_selector: str,
+    child_tag: str | None,
+) -> list[str]:
+    """Generate selectors using shared ID prefixes across containers."""
+
+    reference_id = _extract_id_token(reference_selector)
+    if not reference_id:
+        return []
+
+    related_ids = []
+    for container in containers:
+        selector = container.get("child_selector") or ""
+        container_id = _extract_id_token(selector)
+        if not container_id:
+            continue
+        if _shared_id_prefix(reference_id, container_id, minimum=4):
+            related_ids.append(container_id)
+
+    if len(related_ids) <= 1:
+        return []
+
+    prefix = _longest_common_prefix(related_ids)
+    if not prefix or len(prefix) < 4:
+        return []
+
+    child = child_tag or _extract_child_tag(reference_selector) or "*"
+    selector = f'[id^="{prefix}"] > {child}'
+    return [selector]
+
+
 def _strip_numeric_segments(selector: str) -> str:
     """Remove obviously year-based IDs/classes and nth-of-type markers."""
 
@@ -654,7 +707,18 @@ def _selectors_equivalent(a: str | None, b: str | None) -> bool:
     if not a or not b:
         return False
 
-    return _normalize_selector(a) == _normalize_selector(b)
+    if _normalize_selector(a) == _normalize_selector(b):
+        return True
+
+    id_a = _extract_id_token(a)
+    id_b = _extract_id_token(b)
+    if id_a and id_b and _shared_id_prefix(id_a, id_b, minimum=4):
+        child_a = _extract_child_tag(a)
+        child_b = _extract_child_tag(b)
+        if not child_a or not child_b or child_a == child_b:
+            return True
+
+    return False
 
 
 def _normalize_selector(selector: str) -> str:
@@ -663,6 +727,53 @@ def _normalize_selector(selector: str) -> str:
     simplified = simplify_selector(selector) if selector else selector
     normalized = _strip_numeric_segments(simplified)
     return normalized or selector
+
+
+def _extract_id_token(selector: str | None) -> str | None:
+    if not selector:
+        return None
+
+    match = re.search(r"#([A-Za-z_][\w-]*)", selector)
+    if match:
+        return match.group(1).lower()
+    return None
+
+
+def _extract_child_tag(selector: str | None) -> str | None:
+    if not selector:
+        return None
+
+    parts = [part.strip() for part in selector.split(">") if part.strip()]
+    if not parts:
+        return None
+
+    last = parts[-1]
+    if last.startswith("#") or last.startswith(".") or last.startswith("["):
+        return None
+
+    tag_match = re.match(r"^[a-zA-Z][a-zA-Z0-9-]*", last)
+    if tag_match:
+        return tag_match.group(0)
+    return None
+
+
+def _shared_id_prefix(a: str, b: str, minimum: int = 4) -> bool:
+    prefix = _longest_common_prefix([a, b])
+    return bool(prefix) and len(prefix) >= minimum
+
+
+def _longest_common_prefix(values: list[str]) -> str:
+    if not values:
+        return ""
+
+    prefix = values[0]
+    for value in values[1:]:
+        while not value.startswith(prefix) and prefix:
+            prefix = prefix[:-1]
+        if not prefix:
+            break
+
+    return prefix
 
 
 def _detect_infinite_scroll(soup: BeautifulSoup) -> dict[str, Any]:
@@ -743,6 +854,75 @@ def _detect_infinite_scroll(soup: BeautifulSoup) -> dict[str, Any]:
     indicators["signals"] = signals
 
     return indicators
+
+
+def _detect_pagination_links(soup: BeautifulSoup) -> list[dict[str, Any]]:
+    """Detect likely pagination "next" links on the page."""
+
+    candidates: list[dict[str, Any]] = []
+    seen_selectors: set[str] = set()
+
+    anchors = soup.find_all("a", href=True)
+    for anchor in anchors[:200]:  # limit to prevent runaway processing
+        text = anchor.get_text(" ", strip=True)
+        rel_values = " ".join(anchor.get("rel", [])).lower()
+        aria_label = (anchor.get("aria-label") or "").lower()
+        data_testid = (anchor.get("data-testid") or "").lower()
+        classes = " ".join(anchor.get("class", [])).lower()
+
+        score = 0
+        hints: list[str] = []
+
+        if "next" in rel_values:
+            score += 60
+            hints.append("rel=next")
+        if any(keyword in aria_label for keyword in ["next", "more", "older"]):
+            score += 25
+            hints.append("aria label")
+        if any(keyword in data_testid for keyword in ["next", "pagination"]):
+            score += 20
+            hints.append("data-testid")
+        if any(keyword in classes for keyword in ["next", "more", "older", "pagination"]):
+            score += 20
+            hints.append("class match")
+
+        # Textual matches
+        if re.search(r"\b(next|older|more|weiter|nächste|suivant)\b", text, re.I):
+            score += 40
+            hints.append("link text")
+        if re.search(r"[»›→⟩⟫]", text):
+            score += 15
+            hints.append("arrow symbol")
+
+        if score < 40:
+            continue
+
+        selector = build_robust_selector(anchor)
+        if not selector or selector in seen_selectors:
+            continue
+
+        seen_selectors.add(selector)
+        candidates.append(
+            {
+                "selector": selector,
+                "href": anchor.get("href"),
+                "text": text[:80],
+                "score": score,
+                "hints": hints,
+            }
+        )
+
+    # Deduplicate by href for cases where multiple selectors hit same target
+    unique_candidates: dict[str, dict[str, Any]] = {}
+    for candidate in candidates:
+        href = candidate.get("href") or ""
+        key = (candidate["selector"], href)
+        existing = unique_candidates.get(key)
+        if not existing or candidate["score"] > existing["score"]:
+            unique_candidates[key] = candidate
+
+    ranked = sorted(unique_candidates.values(), key=lambda c: c["score"], reverse=True)
+    return ranked[:6]
 
 
 def _suggest_fields(item: Tag) -> list[dict[str, str]]:

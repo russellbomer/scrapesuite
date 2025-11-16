@@ -254,4 +254,4 @@ def ship(input_file, destination, table, if_exists, delimiter, pretty, exclude_m
 
 
 if __name__ == "__main__":
-    crate()
+    ship()

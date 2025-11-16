@@ -32,6 +32,8 @@ class Deduplicator:
         self.strategy = strategy
         self.seen_hashes: set[str] = set()
         self.last_records: dict[str, dict[str, Any]] = {}
+        self.processed_count = 0
+        self.duplicate_count = 0
     
     def _compute_hash(self, record: dict[str, Any]) -> str:
         """
@@ -65,16 +67,20 @@ class Deduplicator:
             True if duplicate (should skip), False if unique (should keep)
         """
         record_hash = self._compute_hash(record)
+        self.processed_count += 1
         
         if self.strategy == "first":
             # Keep first, skip subsequent duplicates
             if record_hash in self.seen_hashes:
+                self.duplicate_count += 1
                 return True
             self.seen_hashes.add(record_hash)
             return False
         
         else:  # strategy == "last"
             # Store all records, will filter at end
+            if record_hash in self.last_records:
+                self.duplicate_count += 1
             self.last_records[record_hash] = record
             return False  # Don't skip during processing
     
@@ -94,21 +100,23 @@ class Deduplicator:
         """Reset deduplicator state."""
         self.seen_hashes.clear()
         self.last_records.clear()
+        self.processed_count = 0
+        self.duplicate_count = 0
     
     def get_stats(self) -> dict[str, int]:
         """
         Get deduplication statistics.
         
         Returns:
-            Dictionary with 'unique_count' and 'duplicate_count'
+            Dictionary with counts for reporting
         """
         if self.strategy == "first":
-            return {
-                "unique_count": len(self.seen_hashes),
-                "duplicate_count": 0,  # Not tracked in first strategy
-            }
+            unique_count = len(self.seen_hashes)
         else:
-            return {
-                "unique_count": len(self.last_records),
-                "duplicate_count": 0,  # Would need separate tracking
-            }
+            unique_count = len(self.last_records)
+
+        return {
+            "processed_count": self.processed_count,
+            "unique_count": unique_count,
+            "duplicate_count": self.duplicate_count,
+        }

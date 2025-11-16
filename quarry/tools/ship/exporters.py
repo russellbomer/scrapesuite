@@ -205,26 +205,3 @@ class SQLiteExporter(Exporter):
         
         return self.stats
 
-
-class PostgreSQLExporter(Exporter):
-    """
-    Export data to PostgreSQL database.
-    
-    (Not yet implemented - placeholder for Phase 5 extension)
-    """
-    
-    def export(self, input_file: str | Path) -> dict[str, int]:
-        """Export JSONL to PostgreSQL."""
-        raise NotImplementedError("PostgreSQL export coming soon")
-
-
-class MySQLExporter(Exporter):
-    """
-    Export data to MySQL database.
-    
-    (Not yet implemented - placeholder for Phase 5 extension)
-    """
-    
-    def export(self, input_file: str | Path) -> dict[str, int]:
-        """Export JSONL to MySQL."""
-        raise NotImplementedError("MySQL export coming soon")
