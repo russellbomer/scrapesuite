@@ -7,14 +7,14 @@ from ..base import FrameworkProfile
 
 class ShopifyProfile(FrameworkProfile):
     """Shopify e-commerce platform."""
-    
+
     name = "shopify"
-    
+
     @classmethod
     def detect(cls, html: str, item_element: Tag | None = None) -> int:
         """Detect Shopify by looking for product/collection classes."""
         score = 0
-        
+
         # Shopify-specific indicators
         if "product-" in html:
             score += 30
@@ -26,9 +26,9 @@ class ShopifyProfile(FrameworkProfile):
             score += 10
         if "variant" in html:
             score += 10
-        
+
         return min(score, 100)
-    
+
     @classmethod
     def get_item_selector_hints(cls) -> list[str]:
         """Shopify product selectors."""
@@ -38,7 +38,7 @@ class ShopifyProfile(FrameworkProfile):
             ".grid-product",
             ".collection-item",
         ]
-    
+
     @classmethod
     def get_field_mappings(cls) -> dict[str, list[str]]:
         """Common Shopify product fields."""

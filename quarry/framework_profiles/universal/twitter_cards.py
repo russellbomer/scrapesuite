@@ -1,6 +1,7 @@
 """Twitter Cards meta tag profile for social media metadata extraction."""
 
 from bs4 import BeautifulSoup, Tag
+from quarry.lib.bs4_utils import attr_str
 
 from quarry.framework_profiles.base import FrameworkProfile
 
@@ -8,7 +9,7 @@ from quarry.framework_profiles.base import FrameworkProfile
 class TwitterCardsProfile(FrameworkProfile):
     """
     Detect and extract Twitter Cards meta tags.
-    
+
     Twitter Cards provide social media metadata similar to Open Graph.
     Meta tags like twitter:title, twitter:description are structured
     and reliable for extraction.
@@ -53,7 +54,7 @@ class TwitterCardsProfile(FrameworkProfile):
     def get_item_selector_hints(cls) -> list[str]:
         """
         Twitter Cards are in <head>, not item containers.
-        
+
         Returns:
             Empty list (Twitter Cards don't define item containers)
         """
@@ -116,13 +117,13 @@ class TwitterCardsProfile(FrameworkProfile):
     def extract_metadata(cls, html: str) -> dict[str, str]:
         """
         Extract all Twitter Card metadata from HTML.
-        
+
         Args:
             html: Full page HTML
-            
+
         Returns:
             Dict of {twitter_property: content} pairs
-            
+
         Example:
             >>> metadata = TwitterCardsProfile.extract_metadata(html)
             >>> print(metadata)
@@ -132,18 +133,18 @@ class TwitterCardsProfile(FrameworkProfile):
         metadata: dict[str, str] = {}
 
         # Find all Twitter Card meta tags (name attribute)
-        for tag in soup.find_all("meta", attrs={"name": lambda x: x and x.startswith("twitter:")}):
-            name = tag.get("name", "")
-            content = tag.get("content", "")
+        for tag in soup.find_all("meta", attrs={"name": lambda x: isinstance(x, str) and x.startswith("twitter:")}):
+            name = attr_str(tag, "name")
+            content = attr_str(tag, "content")
             if name and content:
                 # Remove 'twitter:' prefix for simpler keys
                 key = name.replace("twitter:", "")
                 metadata[key] = content
 
         # Also check property attribute (less common but valid)
-        for tag in soup.find_all("meta", property=lambda x: x and x.startswith("twitter:")):
-            prop = tag.get("property", "")
-            content = tag.get("content", "")
+        for tag in soup.find_all("meta", property=lambda x: isinstance(x, str) and x.startswith("twitter:")):
+            prop = attr_str(tag, "property")
+            content = attr_str(tag, "content")
             if prop and content:
                 key = prop.replace("twitter:", "")
                 # Don't overwrite if already set from name attribute

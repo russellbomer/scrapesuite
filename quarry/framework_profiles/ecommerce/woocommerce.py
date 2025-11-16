@@ -8,7 +8,7 @@ from quarry.framework_profiles.base import FrameworkProfile
 class WooCommerceProfile(FrameworkProfile):
     """
     Detect WooCommerce (WordPress e-commerce plugin).
-    
+
     WooCommerce is used by 28% of all e-commerce sites.
     It adds specific classes and structure to WordPress for products.
     """

@@ -2,12 +2,27 @@
 
 import re
 from collections import Counter
-from typing import Any
+from typing import Any, List, Dict, cast
 
 from bs4 import BeautifulSoup, Tag
 
 from quarry.framework_profiles import _get_element_classes, detect_all_frameworks
 from quarry.lib.selectors import build_robust_selector, simplify_selector
+
+
+# Module-level helpers to normalize BeautifulSoup attributes
+def _class_tokens(tag: Tag) -> List[str]:
+    raw = tag.get("class")
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        return [raw]
+    return [c for c in raw if isinstance(c, str)]
+
+
+def _attr_str(tag: Tag, name: str) -> str:
+    value = tag.get(name)
+    return value if isinstance(value, str) else ""
 
 
 def analyze_page(html: str, url: str | None = None) -> dict[str, Any]:
@@ -102,7 +117,7 @@ def _detect_all_frameworks(html: str) -> list[dict[str, Any]]:
         )
 
     # Sort by confidence (already sorted by detect_all_frameworks)
-    frameworks.sort(key=lambda x: x["confidence"], reverse=True)
+    frameworks.sort(key=lambda x: cast(float, x.get("confidence", 0.0)), reverse=True)
 
     return frameworks
 
@@ -116,7 +131,6 @@ def _find_containers(soup: BeautifulSoup) -> list[dict[str, Any]]:
         'header',
         'footer',
         'nav',
-        'navigation',
         'menu',
         'sidebar',
         'breadcrumb',
@@ -153,10 +167,12 @@ def _find_containers(soup: BeautifulSoup) -> list[dict[str, Any]]:
         'list',
     ]
 
+    # --- Safe attribute helpers moved to module scope ---
+
     def is_boilerplate(element: Tag) -> bool:
         """Check if element is likely boilerplate."""
         classes = _get_element_classes(element).lower()
-        elem_id = (element.get("id") or "").lower()
+        elem_id = _attr_str(element, "id").lower()
         combined = f"{classes} {elem_id}"
 
         return any(pattern in combined for pattern in BOILERPLATE_PATTERNS)
@@ -164,32 +180,35 @@ def _find_containers(soup: BeautifulSoup) -> list[dict[str, Any]]:
     def is_content_container(element: Tag) -> bool:
         """Check if element is likely a content container."""
         classes = _get_element_classes(element).lower()
-        elem_id = (element.get("id") or "").lower()
+        elem_id = _attr_str(element, "id").lower()
         combined = f"{classes} {elem_id}"
 
         return any(pattern in combined for pattern in CONTENT_PATTERNS)
 
     def has_meaningful_content(element: Tag) -> bool:
-        """Check if child has substantial text content (not just links/buttons)."""
+        """Heuristic: consider content meaningful if it has readable text or links."""
         text = element.get_text(strip=True)
-
-        # Check for presence of headings or paragraphs (strong signal)
         if element.find(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p']):
             return True
-
-        # Check for substantial text (more than just a few words)
-        if len(text) < 15:
-            return False
-
-        # Check text to link ratio
-        links = element.find_all('a')
-        link_text = sum(len(a.get_text(strip=True)) for a in links)
-        if link_text > 0 and len(text) / link_text > 2:
+        # Permit shorter items if there's at least some text or a link
+        if len(text) >= 4:
             return True
+        if element.find('a') and len(text) >= 5:
+            return True
+        return False
 
-        return len(text) > 50
-
-    for container_tag in ["div", "section", "article", "ul", "ol", "main", "aside"]:
+    for container_tag in [
+        "body",
+        "div",
+        "section",
+        "article",
+        "ul",
+        "ol",
+        "main",
+        "aside",
+        "table",
+        "tbody",
+    ]:
         for container in soup.find_all(container_tag):
             # Skip obvious boilerplate
             if is_boilerplate(container):
@@ -213,16 +232,52 @@ def _find_containers(soup: BeautifulSoup) -> list[dict[str, Any]]:
                         c for c in children if hasattr(c, 'name') and c.name == most_common_tag
                     ]
 
-                    # Filter out if children don't have meaningful content
+                    # Prefer meaningful children, but allow large repeated sets
                     meaningful_children = [c for c in similar_children if has_meaningful_content(c)]
-                    if len(meaningful_children) < 3:
+                    if len(meaningful_children) < 3 and count < 10:
                         continue
 
                     selector = build_robust_selector(container)
+                    # Prefer a class-based child selector when a stable class is shared
                     child_selector = f"{selector} > {most_common_tag}"
+                    shared_class = None
+                    class_counts: Counter[str] = Counter()
+                    for ch in similar_children:
+                        for cls in _class_tokens(ch):
+                            if _is_stable_css_token(cls):
+                                class_counts[cls] += 1
+                    if class_counts:
+                        top_cls, top_count = class_counts.most_common(1)[0]
+                        if top_count >= 3 and top_count >= max(3, int(len(similar_children) * 0.6)):
+                            shared_class = top_cls
+                    # If no shared class on the similar children, look at their immediate children
+                    if not shared_class:
+                        desc_class_counts: Counter[str] = Counter()
+                        for ch in similar_children:
+                            for d in ch.find_all(recursive=False):
+                                for cls in _class_tokens(d):
+                                    if _is_stable_css_token(cls):
+                                        desc_class_counts[cls] += 1
+                                        break  # Only consider first class-bearing child per item
+                        if desc_class_counts:
+                            top_cls, top_count = desc_class_counts.most_common(1)[0]
+                            if top_count >= 3 and top_count >= max(
+                                3, int(len(similar_children) * 0.6)
+                            ):
+                                shared_class = top_cls
+                    if shared_class:
+                        # Prefer class-only selector unless container has a stable id
+                        if container.get("id"):
+                            child_selector = f"{selector} > {most_common_tag}"
+                        else:
+                            child_selector = f".{shared_class}"
 
                     # Get sample text from first meaningful child
-                    sample_child = meaningful_children[0] if meaningful_children else None
+                    sample_child = (
+                        meaningful_children[0]
+                        if meaningful_children
+                        else (similar_children[0] if similar_children else None)
+                    )
                     sample_text = sample_child.get_text(strip=True)[:100] if sample_child else ""
 
                     # Calculate content score for ranking
@@ -235,17 +290,29 @@ def _find_containers(soup: BeautifulSoup) -> list[dict[str, Any]]:
                         content_score += 30
                     if most_common_tag in ['article', 'li', 'div']:
                         content_score += 20
+                    if most_common_tag == 'tr':
+                        content_score += 30
+                    if container.name in ['table', 'tbody']:
+                        content_score += 20
 
                     # Bonus for having links (articles usually link to detail pages)
-                    avg_links = sum(1 for c in meaningful_children if c.find('a')) / len(
-                        meaningful_children
+                    effective_children = (
+                        meaningful_children if meaningful_children else similar_children
+                    )
+                    avg_links = (
+                        sum(1 for c in effective_children if c.find('a')) / len(effective_children)
+                        if effective_children
+                        else 0.0
                     )
                     if avg_links > 0.5:
                         content_score += 20
 
                     # Bonus for having images (articles often have featured images)
-                    avg_images = sum(1 for c in meaningful_children if c.find('img')) / len(
-                        meaningful_children
+                    avg_images = (
+                        sum(1 for c in effective_children if c.find('img'))
+                        / len(effective_children)
+                        if effective_children
+                        else 0.0
                     )
                     if avg_images > 0.3:
                         content_score += 15
@@ -274,7 +341,7 @@ def _find_containers(soup: BeautifulSoup) -> list[dict[str, Any]]:
 
 def _extract_metadata(soup: BeautifulSoup) -> dict[str, Any]:
     """Extract page metadata (title, description, etc.)."""
-    metadata = {}
+    metadata: dict[str, Any] = {}
 
     # Title
     title_tag = soup.find("title")
@@ -319,7 +386,7 @@ def _extract_metadata(soup: BeautifulSoup) -> dict[str, Any]:
 
 def _calculate_statistics(soup: BeautifulSoup) -> dict[str, Any]:
     """Calculate page statistics."""
-    stats = {}
+    stats: dict[str, Any] = {}
 
     # Count elements
     stats["total_elements"] = len(soup.find_all(True))
@@ -357,7 +424,7 @@ def _generate_suggestions(
     soup: BeautifulSoup, containers: list[dict], frameworks: list[dict]
 ) -> dict[str, Any]:
     """Generate extraction suggestions based on analysis."""
-    suggestions = {}
+    suggestions: dict[str, Any] = {}
 
     # Detect infinite scroll indicators
     suggestions["infinite_scroll"] = _detect_infinite_scroll(soup)
@@ -375,7 +442,7 @@ def _generate_suggestions(
         best = containers[0]
         original_selector = best["child_selector"]
         try:
-            items = soup.select(original_selector)
+            items: list[Tag] = soup.select(original_selector)
         except Exception:
             items = []
 
@@ -400,7 +467,7 @@ def _generate_suggestions(
         suggestions["item_selector"] = generalized_selector
 
         try:
-            refreshed_items = soup.select(generalized_selector)
+            refreshed_items: list[Tag] = soup.select(generalized_selector)
         except Exception:
             refreshed_items = []
 
@@ -414,11 +481,11 @@ def _generate_suggestions(
     for item in items[:25]:  # limit for performance
         candidates = _suggest_fields(item)
         for candidate in candidates:
-            key = (
-                candidate.get("name"),
-                candidate.get("selector"),
-                candidate.get("attribute"),
-            )
+            name = str(candidate.get("name") or "")
+            selector = str(candidate.get("selector") or "")
+            attr_val = candidate.get("attribute")
+            attribute = attr_val if isinstance(attr_val, str) else None
+            key = (name, selector, attribute)
 
             if not key[0] or not key[1]:
                 continue
@@ -426,8 +493,8 @@ def _generate_suggestions(
             entry = field_pool.setdefault(
                 key,
                 {
-                    "name": candidate["name"],
-                    "selector": candidate["selector"],
+                    "name": name,
+                    "selector": selector,
                     "attribute": candidate.get("attribute"),
                     "sample": candidate.get("sample", ""),
                     "support": 0,
@@ -490,9 +557,7 @@ def _generalize_item_selector(
     if not original_selector:
         return original_selector
 
-    id_prefix_candidates = _id_prefix_selector_candidates(
-        containers, original_selector, child_tag
-    )
+    id_prefix_candidates = _id_prefix_selector_candidates(containers, original_selector, child_tag)
 
     candidates: list[str] = []
     if original_selector:
@@ -529,7 +594,7 @@ def _generalize_item_selector(
         seen.add(selector)
 
         try:
-            matches = soup.select(selector)
+            matches: list[Tag] = soup.select(selector)
         except Exception:
             continue
 
@@ -578,7 +643,7 @@ def _gather_similar_items(
         seen_selectors.add(selector)
 
         try:
-            matches = soup.select(selector)
+            matches: list[Tag] = soup.select(selector)
         except Exception:
             continue
 
@@ -599,12 +664,24 @@ def _class_selector_candidates(items: list[Tag], child_tag: str | None) -> list[
         return []
 
     class_counts: Counter[str] = Counter()
+    class_tag_hint: dict[str, str] = {}
     total_items = len(items)
 
     for item in items:
-        classes = {cls for cls in (item.get("class") or []) if _is_stable_css_token(cls)}
-        for cls in classes:
+        own_classes = {cls for cls in _class_tokens(item) if _is_stable_css_token(cls)}
+        for cls in own_classes:
             class_counts[cls] += 1
+            class_tag_hint.setdefault(cls, item.name or "")
+
+        # Look at direct children to find a more semantic descendant (e.g., article, tr)
+        for child in item.find_all(recursive=False):
+            child_classes = {cls for cls in _class_tokens(child) if _is_stable_css_token(cls)}
+            for cls in child_classes:
+                class_counts[cls] += 1
+                # Prefer more semantic tags when available
+                tag = child.name or ""
+                if cls not in class_tag_hint or tag in {"article", "tr", "li", "div"}:
+                    class_tag_hint[cls] = tag
 
     if not class_counts:
         return []
@@ -619,8 +696,9 @@ def _class_selector_candidates(items: list[Tag], child_tag: str | None) -> list[
 
     candidates: list[str] = []
     for cls in ordered:
-        if child_tag:
-            candidates.append(f"{child_tag}.{cls}")
+        tag_for_cls = class_tag_hint.get(cls) or child_tag
+        if tag_for_cls:
+            candidates.append(f"{tag_for_cls}.{cls}")
         candidates.append(f".{cls}")
 
     # Deduplicate while preserving order
@@ -830,7 +908,9 @@ def _detect_infinite_scroll(soup: BeautifulSoup) -> dict[str, Any]:
     )
     if loading_indicators:
         score += 15
-        signals.append(f"Loading indicator found: {loading_indicators[0].get('class', [''])[0]}")
+        first_classes = loading_indicators[0].get("class")
+        class_name = first_classes[0] if isinstance(first_classes, list) and first_classes else ""
+        signals.append(f"Loading indicator found: {class_name}")
 
     # Check for scroll event listeners in scripts
     scripts = soup.find_all("script")
@@ -865,10 +945,15 @@ def _detect_pagination_links(soup: BeautifulSoup) -> list[dict[str, Any]]:
     anchors = soup.find_all("a", href=True)
     for anchor in anchors[:200]:  # limit to prevent runaway processing
         text = anchor.get_text(" ", strip=True)
-        rel_values = " ".join(anchor.get("rel", [])).lower()
-        aria_label = (anchor.get("aria-label") or "").lower()
-        data_testid = (anchor.get("data-testid") or "").lower()
-        classes = " ".join(anchor.get("class", [])).lower()
+        rel_raw = anchor.get("rel")
+        rel_values = (
+            " ".join(rel_raw)
+            if isinstance(rel_raw, list)
+            else (rel_raw if isinstance(rel_raw, str) else "")
+        ).lower()
+        aria_label = _attr_str(anchor, "aria-label").lower()
+        data_testid = _attr_str(anchor, "data-testid").lower()
+        classes = " ".join(_class_tokens(anchor)).lower()
 
         score = 0
         hints: list[str] = []
@@ -913,7 +998,7 @@ def _detect_pagination_links(soup: BeautifulSoup) -> list[dict[str, Any]]:
         )
 
     # Deduplicate by href for cases where multiple selectors hit same target
-    unique_candidates: dict[str, dict[str, Any]] = {}
+    unique_candidates: dict[tuple[str, str], dict[str, Any]] = {}
     for candidate in candidates:
         href = candidate.get("href") or ""
         key = (candidate["selector"], href)
@@ -925,7 +1010,7 @@ def _detect_pagination_links(soup: BeautifulSoup) -> list[dict[str, Any]]:
     return ranked[:6]
 
 
-def _suggest_fields(item: Tag) -> list[dict[str, str]]:
+def _suggest_fields(item: Tag) -> list[dict[str, Any]]:
     """Suggest field selectors within an item."""
     fields = []
     seen_selectors = set()  # Avoid duplicates
@@ -1014,17 +1099,17 @@ def _suggest_fields(item: Tag) -> list[dict[str, str]]:
                         continue
 
                     # Get sample text or attribute
-                    sample = ""
-                    attribute = None
+                    sample: str = ""
+                    attribute: str | None = None
 
                     if field_name == "link":
-                        sample = elem.get("href", "")
+                        sample = _attr_str(elem, "href")
                         attribute = "href"
                     elif field_name == "image":
-                        sample = elem.get("src", "")
+                        sample = _attr_str(elem, "src")
                         attribute = "src"
-                    elif field_name == "date" and elem.get("datetime"):
-                        sample = elem.get("datetime", "")
+                    elif field_name == "date" and _attr_str(elem, "datetime"):
+                        sample = _attr_str(elem, "datetime")
                         attribute = "datetime"
                     else:
                         sample = elem.get_text(strip=True)
@@ -1055,7 +1140,7 @@ def _suggest_fields(item: Tag) -> list[dict[str, str]]:
     if not any(f["name"] == "link" for f in fields):
         links = item.find_all("a", href=True, limit=3)
         for idx, link in enumerate(links):
-            href = link.get("href", "")
+            href = _attr_str(link, "href")
             if href and not href.startswith("#"):
                 selector = "a" if idx == 0 else f"a:nth-of-type({idx + 1})"
                 fields.append(

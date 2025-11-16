@@ -7,14 +7,14 @@ from ..base import FrameworkProfile, _get_element_classes
 
 class WordPressProfile(FrameworkProfile):
     """WordPress - extremely common CMS."""
-    
+
     name = "wordpress"
-    
+
     @classmethod
     def detect(cls, html: str, item_element: Tag | None = None) -> int:
         """Detect WordPress by looking for characteristic classes."""
         score = 0
-        
+
         # Check for WordPress-specific indicators
         if "wp-content" in html:
             score += 30
@@ -26,15 +26,15 @@ class WordPressProfile(FrameworkProfile):
             score += 15
         if "wp-includes" in html:
             score += 15
-        
+
         # Check item element
         if item_element:
             classes = _get_element_classes(item_element)
             if any(indicator in classes for indicator in ["post", "entry", "hentry", "article"]):
                 score += 20
-        
+
         return min(score, 100)
-    
+
     @classmethod
     def get_item_selector_hints(cls) -> list[str]:
         """WordPress post/article selectors."""
@@ -46,7 +46,7 @@ class WordPressProfile(FrameworkProfile):
             ".entry",
             ".type-post",
         ]
-    
+
     @classmethod
     def get_field_mappings(cls) -> dict[str, list[str]]:
         """Common WordPress classes."""

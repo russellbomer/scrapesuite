@@ -140,22 +140,21 @@ def show_api_guide():
             "[bold cyan]Finding API Endpoints for Infinite Scroll Sites[/bold cyan]",
             subtitle="A Quarry Guide",
             border_style="cyan",
-            expand=False
+            expand=False,
         )
     )
     console.print()
-    
+
     md = Markdown(API_GUIDE_TEXT)
     console.print(md)
-    
+
     console.print()
     console.print(
         Panel(
             "💡 [bold]Pro Tip:[/bold] Open DevTools Network tab, scroll the page, "
             "and look for JSON responses in the XHR/Fetch filter.",
             border_style="green",
-            expand=False
+            expand=False,
         )
     )
     console.print()
-

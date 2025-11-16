@@ -16,54 +16,44 @@ from .reporter import format_as_json, format_as_terminal
 @click.command()
 @click.argument("url_or_file", required=False)
 @click.option(
-    "--file", "-f",
-    type=click.Path(exists=True),
-    help="Analyze HTML from file instead of URL"
+    "--file", "-f", type=click.Path(exists=True), help="Analyze HTML from file instead of URL"
 )
 @click.option(
-    "--output", "-o",
-    type=click.Path(),
-    help="Save output to file (default: print to stdout)"
+    "--output", "-o", type=click.Path(), help="Save output to file (default: print to stdout)"
 )
 @click.option(
     "--format",
     type=click.Choice(["terminal", "json"], case_sensitive=False),
     default="terminal",
-    help="Output format (default: terminal)"
+    help="Output format (default: terminal)",
 )
+@click.option("--pretty/--compact", default=True, help="Pretty-print JSON output (default: pretty)")
 @click.option(
-    "--pretty/--compact",
-    default=True,
-    help="Pretty-print JSON output (default: pretty)"
-)
-@click.option(
-    "--find-api",
-    is_flag=True,
-    help="Show guide for finding API endpoints (infinite scroll sites)"
+    "--find-api", is_flag=True, help="Show guide for finding API endpoints (infinite scroll sites)"
 )
 @click.option(
     "--batch/--interactive",
     "batch_mode",
     default=False,
-    help="Batch mode (skip prompts, fail if arguments missing)"
+    help="Batch mode (skip prompts, fail if arguments missing)",
 )
 def scout(url_or_file, file, output, format, pretty, find_api, batch_mode):
     """
     Analyze HTML structure and detect patterns.
-    
+
     SCOUT examines web pages to identify:
-    
+
     \b
     • Frameworks (Bootstrap, React, WordPress, etc.)
-    • Repeated elements (likely data items)  
+    • Repeated elements (likely data items)
     • Page structure and metadata
     • Extraction suggestions
-    
+
     \b
     Interactive Mode (default):
       quarry scout
       → Prompts for URL or file path
-    
+
     \b
     Batch Mode (with arguments):
       quarry scout https://news.ycombinator.com
@@ -71,28 +61,25 @@ def scout(url_or_file, file, output, format, pretty, find_api, batch_mode):
       quarry scout https://github.com --output analysis.json --batch
       quarry scout --find-api  # Guide for infinite scroll sites
     """
-    
+
     # Show API finding guide if requested
     if find_api:
         from .api_guide import show_api_guide
+
         show_api_guide()
         return
-    
+
     # Interactive mode: prompt for missing values
     if not batch_mode and not url_or_file and not file:
         click.echo("🔍 Quarry Scout - Interactive Mode\n", err=True)
-        
+
         # Prompt for source type (with retry)
-        source_type = prompt_choice(
-            "Analyze:",
-            choices=["URL", "Local file"],
-            allow_cancel=True
-        )
-        
+        source_type = prompt_choice("Analyze:", choices=["URL", "Local file"], allow_cancel=True)
+
         if not source_type:
             click.echo("Cancelled", err=True)
             sys.exit(0)
-        
+
         if source_type == "URL":
             url_or_file = prompt_url("Enter URL:", allow_cancel=True)
             if not url_or_file:
@@ -101,29 +88,27 @@ def scout(url_or_file, file, output, format, pretty, find_api, batch_mode):
             file = prompt_file("HTML file path:", allow_cancel=True)
             if not file:
                 sys.exit(0)
-        
+
         # Ask about output
         save_output = prompt_confirm("Save results to file?", default=False)
-        
+
         if save_output:
-            output = questionary.text(
-                "Output file:",
-                default="scout_analysis.json"
-            ).ask()
-            
+            output = questionary.text("Output file:", default="scout_analysis.json").ask()
+
             if output:
                 # Suggest JSON format if saving
-                format = prompt_choice(
-                    "Output format:",
-                    choices=["json", "terminal"],
-                    allow_cancel=False
-                ) or "json"
-    
+                format = (
+                    prompt_choice(
+                        "Output format:", choices=["json", "terminal"], allow_cancel=False
+                    )
+                    or "json"
+                )
+
     # Validate required arguments in batch mode
     if not url_or_file and not file:
         click.echo("Error: Provide a URL or use --file option", err=True)
         sys.exit(1)
-    
+
     # Determine source
     if file:
         html_source = Path(file)
@@ -143,7 +128,7 @@ def scout(url_or_file, file, output, format, pretty, find_api, batch_mode):
         # Should not reach here due to validation above
         click.echo("Error: No source specified", err=True)
         sys.exit(1)
-    
+
     # Get HTML
     try:
         if isinstance(html_source, Path):
@@ -153,11 +138,11 @@ def scout(url_or_file, file, output, format, pretty, find_api, batch_mode):
     except Exception as e:
         click.echo(f"Error loading HTML: {e}", err=True)
         sys.exit(1)
-    
+
     if not html:
         click.echo("Error: No HTML content retrieved", err=True)
         sys.exit(1)
-    
+
     # Analyze
     click.echo("🔍 Analyzing...", err=True)
     try:
@@ -165,13 +150,13 @@ def scout(url_or_file, file, output, format, pretty, find_api, batch_mode):
     except Exception as e:
         click.echo(f"Error during analysis: {e}", err=True)
         sys.exit(1)
-    
+
     # Format output
     if format.lower() == "json":
         result = format_as_json(analysis, pretty=pretty)
     else:
         result = format_as_terminal(analysis)
-    
+
     # Output
     if output:
         output_path = Path(output)
@@ -179,7 +164,7 @@ def scout(url_or_file, file, output, format, pretty, find_api, batch_mode):
         click.echo(f"✅ Saved to: {output}", err=True)
     else:
         click.echo(result)
-    
+
     # Offer to run survey next (only in interactive mode and if we have a URL)
     if not batch_mode and url and format.lower() == "terminal":
         click.echo("", err=True)
@@ -187,10 +172,10 @@ def scout(url_or_file, file, output, format, pretty, find_api, batch_mode):
             click.echo("", err=True)
             click.echo("Starting survey...", err=True)
             click.echo("─" * 50, err=True)
-            
+
             # Import here to avoid circular dependency
             from quarry.tools.survey.cli import create
-            
+
             # Save analysis to temp file if not already saved
             analysis_file = None
             if output and format.lower() == "json":
@@ -199,25 +184,29 @@ def scout(url_or_file, file, output, format, pretty, find_api, batch_mode):
                 # Save analysis to temp file for survey to use
                 import tempfile
                 import json
+
                 fd, analysis_file = tempfile.mkstemp(suffix=".json", prefix="probe_")
                 with open(fd, 'w') as f:
                     json.dump(analysis, f, indent=2)
-            
+
             # Build context for survey create
             ctx = click.get_current_context()
-            
+
             # Invoke create command directly with new context
             try:
-                ctx.invoke(create, 
-                          url=url,
-                          from_probe=analysis_file,
-                          file=None,
-                          output="schema.yml",
-                          preview=True)
+                ctx.invoke(
+                    create,
+                    url=url,
+                    from_probe=analysis_file,
+                    file=None,
+                    output="schema.yml",
+                    preview=True,
+                )
             finally:
                 # Clean up temp file if we created one
                 if analysis_file and not output:
                     import os
+
                     try:
                         os.unlink(analysis_file)
                     except:

@@ -6,6 +6,7 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 
 from quarry.connectors.base import Raw
+from quarry.lib.bs4_utils import attr_str
 
 
 class CustomConnector:
@@ -99,14 +100,14 @@ class CustomConnector:
         # Simple parser: look for anchor tags
         anchors = soup.find_all("a", href=True)
         for anchor in anchors[:3]:  # Limit to first 3 for stub
-            href = anchor.get("href", "")
+            href = attr_str(anchor, "href")
             title = anchor.get_text(strip=True) or "Untitled"
 
             records.append(
                 {
-                    "id": href.split("/")[-1] or f"custom-{len(records) + 1}",
+                    "id": (href.split("/")[-1] if href else "") or f"custom-{len(records) + 1}",
                     "title": title,
-                    "url": href if href.startswith("http") else f"{self.entry_url}{href}",
+                    "url": href if href.startswith("http") else (f"{self.entry_url}{href}" if href else self.entry_url),
                     "posted_at": "2024-01-15T00:00:00Z",
                 }
             )

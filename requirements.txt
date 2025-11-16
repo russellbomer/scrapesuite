@@ -12,6 +12,7 @@ ruff
 mypy
 types-requests
 types-PyYAML
+pandas-stubs
 
 
 

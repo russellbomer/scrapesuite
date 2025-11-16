@@ -4,6 +4,7 @@ import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlparse
+from typing import cast
 from urllib.robotparser import RobotFileParser
 
 import requests
@@ -166,7 +167,7 @@ def get_cache(db_path: str | None = None) -> RobotsCache:
     """Get or create global robots cache instance."""
     if _CACHE_CONTAINER["instance"] is None:
         _CACHE_CONTAINER["instance"] = RobotsCache(db_path)
-    return _CACHE_CONTAINER["instance"]
+    return cast(RobotsCache, _CACHE_CONTAINER["instance"])
 
 
 def check_robots(url: str, user_agent: str = "Quarry") -> bool:

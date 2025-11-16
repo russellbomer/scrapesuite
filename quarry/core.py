@@ -22,7 +22,8 @@ from quarry.transforms import fda as fda_transforms
 from quarry.transforms import generic as generic_transforms
 from quarry.transforms import nws as nws_transforms
 
-_CONNECTOR_REGISTRY: dict[str, type[Connector]] = {
+# Registry of available connectors. Use broad type to allow varying constructors.
+_CONNECTOR_REGISTRY: dict[str, Any] = {
     "custom_list": custom_conn.CustomConnector,
     "fda_list": fda.FDAConnector,
     "nws_list": nws.NWSConnector,

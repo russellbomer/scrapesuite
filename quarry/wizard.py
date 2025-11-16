@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, cast
 
 import questionary
 from rich.console import Console
@@ -232,6 +232,7 @@ def _run_extraction_flow(schema_path: str) -> str | None:
                 except ValueError:
                     console.print("[yellow]Invalid number, using schema setting[/yellow]")
             if not max_pages:
+                assert schema.pagination is not None
                 max_pages = schema.pagination.max_pages
         else:
             use_pagination = False
@@ -344,7 +345,7 @@ def _run_polish_flow(input_path: str) -> str | None:
             output_file=output_path,
             deduplicate=dedupe,
             dedupe_keys=dedupe_fields,
-            dedupe_strategy=dedupe_strategy,
+            dedupe_strategy=cast(Literal["first", "last"], dedupe_strategy),
             transformations=None,
             validation_rules=None,
             skip_invalid=skip_invalid,

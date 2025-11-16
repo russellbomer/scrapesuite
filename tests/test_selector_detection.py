@@ -12,7 +12,7 @@ from quarry.inspector import find_item_selector, generate_field_selector
 
 class TestRealWorldSelectorDetection:
     """Test selector detection on real-world HTML patterns."""
-    
+
     def test_hacker_news_pattern(self):
         """Test Hacker News structure - vote buttons before title."""
         html = '''
@@ -37,28 +37,29 @@ class TestRealWorldSelectorDetection:
           </tr>
         </table>
         '''
-        
+
         # Should detect .athing as item selector
         candidates = find_item_selector(html, min_items=3)
         selectors = [c["selector"] for c in candidates]
-        
-        assert ".athing" in selectors or "tr.athing" in selectors, \
+
+        assert ".athing" in selectors or "tr.athing" in selectors, (
             f"Should detect .athing, got: {selectors}"
-        
+        )
+
         # Should generate correct title selector (not vote button)
         soup = BeautifulSoup(html, 'html.parser')
         item = soup.select_one('.athing')
-        
+
         title_selector = generate_field_selector(item, 'title')
         assert title_selector is not None, "Should detect title selector"
-        
+
         # Verify it extracts correct content (not vote link)
         title_elem = item.select_one(title_selector.replace('::attr(href)', ''))
         assert title_elem is not None
         title_text = title_elem.get_text(strip=True)
         assert len(title_text) > 10, f"Title too short: {title_text}"
         assert "Article" in title_text, f"Should extract article title, got: {title_text}"
-    
+
     def test_fda_fixture_pattern(self):
         """Test FDA fixture structure."""
         html = '''
@@ -88,24 +89,25 @@ class TestRealWorldSelectorDetection:
           </body>
         </html>
         '''
-        
+
         candidates = find_item_selector(html, min_items=3)
         selectors = [c["selector"] for c in candidates]
-        
-        assert ".recall-item" in selectors or "article.recall-item" in selectors, \
+
+        assert ".recall-item" in selectors or "article.recall-item" in selectors, (
             f"Should detect .recall-item, got: {selectors}"
-        
+        )
+
         # Test field generation
         soup = BeautifulSoup(html, 'html.parser')
         item = soup.select_one('.recall-item')
-        
+
         title_selector = generate_field_selector(item, 'title')
         assert title_selector is not None
-        
+
         date_selector = generate_field_selector(item, 'date')
         assert date_selector is not None
         assert "time" in date_selector.lower()
-    
+
     def test_blog_post_pattern(self):
         """Test common blog post structure."""
         html = '''
@@ -139,31 +141,32 @@ class TestRealWorldSelectorDetection:
           </article>
         </main>
         '''
-        
+
         candidates = find_item_selector(html, min_items=3)
         selectors = [c["selector"] for c in candidates]
-        
-        assert ".post" in selectors or "article.post" in selectors, \
+
+        assert ".post" in selectors or "article.post" in selectors, (
             f"Should detect .post, got: {selectors}"
-        
+        )
+
         soup = BeautifulSoup(html, 'html.parser')
         item = soup.select_one('.post')
-        
+
         # Should detect h2 for title
         title_selector = generate_field_selector(item, 'title')
         assert title_selector is not None
         assert "h2" in title_selector.lower()
-        
+
         # Should detect author
         author_selector = generate_field_selector(item, 'author')
         assert author_selector is not None
         assert "author" in author_selector.lower()
-        
+
         # Should detect date
         date_selector = generate_field_selector(item, 'date')
         assert date_selector is not None
         assert "time" in date_selector.lower()
-    
+
     def test_no_class_list_items(self):
         """Test structure without explicit classes (harder case)."""
         html = '''
@@ -182,14 +185,15 @@ class TestRealWorldSelectorDetection:
           </li>
         </ul>
         '''
-        
+
         candidates = find_item_selector(html, min_items=3)
         selectors = [c["selector"] for c in candidates]
-        
+
         # Should at least detect 'li' as repeated pattern
-        assert "li" in selectors or any("li" in s for s in selectors), \
+        assert "li" in selectors or any("li" in s for s in selectors), (
             f"Should detect li elements, got: {selectors}"
-    
+        )
+
     def test_table_rows_pattern(self):
         """Test table-based listings."""
         html = '''
@@ -213,13 +217,14 @@ class TestRealWorldSelectorDetection:
           </tbody>
         </table>
         '''
-        
+
         candidates = find_item_selector(html, min_items=3)
         selectors = [c["selector"] for c in candidates]
-        
-        assert ".data-row" in selectors or "tr.data-row" in selectors, \
+
+        assert ".data-row" in selectors or "tr.data-row" in selectors, (
             f"Should detect .data-row, got: {selectors}"
-    
+        )
+
     def test_unicode_and_emoji_content(self):
         """Test non-ASCII content."""
         html = '''
@@ -235,24 +240,24 @@ class TestRealWorldSelectorDetection:
           </div>
         </div>
         '''
-        
+
         candidates = find_item_selector(html, min_items=3)
         selectors = [c["selector"] for c in candidates]
-        
+
         assert ".item" in selectors or "div.item" in selectors
-        
+
         soup = BeautifulSoup(html, 'html.parser')
         item = soup.select_one('.item')
-        
+
         title_selector = generate_field_selector(item, 'title')
         assert title_selector is not None
-        
+
         # Verify it extracts unicode/emoji correctly
         title_elem = item.select_one(title_selector.replace('::attr(href)', ''))
         assert title_elem is not None
         title_text = title_elem.get_text(strip=True)
         assert len(title_text) > 0
-    
+
     def test_data_attributes(self):
         """Test detection of modern data-* attributes."""
         html = '''
@@ -277,28 +282,28 @@ class TestRealWorldSelectorDetection:
           </div>
         </div>
         '''
-        
+
         candidates = find_item_selector(html, min_items=3)
         assert len(candidates) > 0
         assert ".card" in [c["selector"] for c in candidates]
-        
+
         soup = BeautifulSoup(html, 'html.parser')
         item = soup.select_one('.card')
-        
+
         # Should detect data-date
         date_selector = generate_field_selector(item, 'date')
         assert date_selector is not None
         assert "data-date" in date_selector or "span" in date_selector
-        
-        # Should detect data-author  
+
+        # Should detect data-author
         author_selector = generate_field_selector(item, 'author')
         assert author_selector is not None
         assert "data-author" in author_selector or "span" in author_selector
-        
+
         # Should detect data-score
         score_selector = generate_field_selector(item, 'score')
         assert score_selector is not None
-    
+
     def test_url_pattern_detection(self):
         """Test URL pattern-based item detection (like FDA connector)."""
         html = '''
@@ -317,21 +322,23 @@ class TestRealWorldSelectorDetection:
         </body>
         </html>
         '''
-        
+
         candidates = find_item_selector(html, min_items=3)
         selectors = [c["selector"] for c in candidates]
-        
+
         # URL pattern detection should find parent containers (p or div.content),
         # not the links themselves (better for field extraction)
-        assert any("p" in s or "div" in s for s in selectors), \
+        assert any("p" in s or "div" in s for s in selectors), (
             f"Should detect parent containers of /articles links, got: {selectors}"
-        
+        )
+
         # Should detect at least 4 items (the 4 article links in their containers)
         p_candidates = [c for c in candidates if "p" in c["selector"] or "div" in c["selector"]]
         if p_candidates:
-            assert p_candidates[0]["count"] >= 4, \
+            assert p_candidates[0]["count"] >= 4, (
                 f"Should find 4+ article containers, got: {p_candidates[0]['count']}"
-    
+            )
+
     def test_split_title_detection(self):
         """Test detection of titles split across multiple elements."""
         html = '''
@@ -356,14 +363,14 @@ class TestRealWorldSelectorDetection:
           </article>
         </div>
         '''
-        
+
         candidates = find_item_selector(html, min_items=3)
         assert len(candidates) > 0
         assert ".item" in [c["selector"] for c in candidates]
-        
+
         soup = BeautifulSoup(html, 'html.parser')
         item = soup.select_one('.item')
-        
+
         # Should detect some container for the title
         title_selector = generate_field_selector(item, 'title')
         assert title_selector is not None

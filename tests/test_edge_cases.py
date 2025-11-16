@@ -52,10 +52,10 @@ def test_find_item_selector_very_large_html():
     # Create HTML with 100 repeated items
     items = "\n".join([f'<div class="item">Item {i}</div>' for i in range(100)])
     html = f"<html><body>{items}</body></html>"
-    
+
     candidates = find_item_selector(html, min_items=10)
     assert len(candidates) > 0
-    
+
     # Should find .item with count=100
     item_candidate = next((c for c in candidates if "item" in c["selector"]), None)
     assert item_candidate is not None
@@ -187,7 +187,7 @@ def test_preview_extraction_limits_to_three():
     """Preview limits to first 3 items."""
     items = "\n".join([f'<div class="item"><h2>Item {i}</h2></div>' for i in range(10)])
     html = f"<html><body>{items}</body></html>"
-    
+
     result = preview_extraction(html, "div.item", {"title": "h2"})
     assert len(result) == 3
     assert result[0]["title"] == "Item 0"

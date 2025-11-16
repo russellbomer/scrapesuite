@@ -2,11 +2,13 @@
 
 import warnings
 from pathlib import Path
+from typing import TypedDict
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from quarry.connectors.base import Raw
 from quarry.lib.http import get_html
+from quarry.lib.bs4_utils import attr_str
 
 
 class NWSConnector:
@@ -72,16 +74,26 @@ class NWSConnector:
             raise FileNotFoundError(f"Fixture not found: {path}")
         return fixture_path.read_text(encoding="utf-8")
 
+    class NWSRaw(Raw, total=False):
+        type: str
+        area: str
+        severity: str | None
+        start: str | None
+        end: str | None
+        headline: str
+
     def list_parser(self, html: str) -> list[Raw]:
         """Parse NWS alerts HTML."""
         soup = BeautifulSoup(html, "html.parser")
-        records: list[Raw] = []
+        from typing import Any, cast
+
+        records: list[dict[str, Any]] = []
 
         # Look for alert items
         items = soup.find_all("entry") or soup.find_all("div", class_="alert")
         if not items:
             # Fallback: create synthetic records
-            return [
+            synthetic: list[dict[str, Any]] = [
                 {
                     "id": "NWS-001",
                     "type": "Warning",
@@ -123,6 +135,7 @@ class NWSConnector:
                     "url": "https://alerts.weather.gov/cap/wwacapget.php?x=004",
                 },
             ]
+            return cast(list[Raw], synthetic)
 
         for item in items:
             id_elem = item.find("id") or item.get("id")
@@ -135,9 +148,7 @@ class NWSConnector:
                     id_elem.get_text(strip=True) if hasattr(id_elem, "get_text") else str(id_elem)
                 )
                 headline = title_elem.get_text(strip=True) if title_elem else ""
-                url = link_elem.get("href") or (
-                    link_elem["href"] if hasattr(link_elem, "get") else ""
-                )
+                url = attr_str(link_elem, "href") if isinstance(link_elem, Tag) else ""
                 start = updated_elem.get_text(strip=True) if updated_elem else ""
 
                 # Extract type and severity from content
@@ -163,4 +174,4 @@ class NWSConnector:
                     }
                 )
 
-        return records
+        return cast(list[Raw], records)

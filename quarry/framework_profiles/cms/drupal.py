@@ -7,14 +7,14 @@ from ..base import FrameworkProfile, _get_element_classes
 
 class DrupalViewsProfile(FrameworkProfile):
     """Drupal Views module - very common for listing pages."""
-    
+
     name = "drupal_views"
-    
+
     @classmethod
     def detect(cls, html: str, item_element: Tag | None = None) -> int:
         """Detect Drupal Views by looking for characteristic classes."""
         score = 0
-        
+
         # Check HTML content for views-specific markers
         if "views-row" in html:
             score += 35
@@ -24,7 +24,7 @@ class DrupalViewsProfile(FrameworkProfile):
             score += 15
         if "views-table" in html:
             score += 10
-        
+
         # Check item element if provided
         if item_element:
             classes = _get_element_classes(item_element)
@@ -32,9 +32,9 @@ class DrupalViewsProfile(FrameworkProfile):
                 score += 25
             if "views-field" in classes:
                 score += 10
-        
+
         return min(score, 100)
-    
+
     @classmethod
     def get_item_selector_hints(cls) -> list[str]:
         """Drupal Views typically uses .views-row or table rows."""
@@ -46,7 +46,7 @@ class DrupalViewsProfile(FrameworkProfile):
             "tbody > tr",
             ".view-content .views-row",
         ]
-    
+
     @classmethod
     def get_field_mappings(cls) -> dict[str, list[str]]:
         """Common Drupal Views field classes."""

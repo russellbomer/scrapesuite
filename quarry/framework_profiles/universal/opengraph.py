@@ -1,6 +1,7 @@
 """Open Graph meta tag profile for social media metadata extraction."""
 
 from bs4 import BeautifulSoup, Tag
+from quarry.lib.bs4_utils import attr_str
 
 from quarry.framework_profiles.base import FrameworkProfile
 
@@ -8,7 +9,7 @@ from quarry.framework_profiles.base import FrameworkProfile
 class OpenGraphProfile(FrameworkProfile):
     """
     Detect and extract Open Graph meta tags.
-    
+
     Open Graph is a protocol for social media sharing metadata.
     Meta tags like og:title, og:description, og:image are highly
     structured and reliable for extraction.
@@ -53,7 +54,7 @@ class OpenGraphProfile(FrameworkProfile):
     def get_item_selector_hints(cls) -> list[str]:
         """
         Open Graph tags are in <head>, not item containers.
-        
+
         Returns:
             Empty list (OG tags don't define item containers)
         """
@@ -126,13 +127,13 @@ class OpenGraphProfile(FrameworkProfile):
     def extract_metadata(cls, html: str) -> dict[str, str]:
         """
         Extract all Open Graph metadata from HTML.
-        
+
         Args:
             html: Full page HTML
-            
+
         Returns:
             Dict of {og_property: content} pairs
-            
+
         Example:
             >>> metadata = OpenGraphProfile.extract_metadata(html)
             >>> print(metadata)
@@ -142,18 +143,18 @@ class OpenGraphProfile(FrameworkProfile):
         metadata: dict[str, str] = {}
 
         # Find all OG meta tags
-        for tag in soup.find_all("meta", property=lambda x: x and x.startswith("og:")):
-            prop = tag.get("property", "")
-            content = tag.get("content", "")
+        for tag in soup.find_all("meta", property=lambda x: isinstance(x, str) and x.startswith("og:")):
+            prop = attr_str(tag, "property")
+            content = attr_str(tag, "content")
             if prop and content:
                 # Remove 'og:' prefix for simpler keys
                 key = prop.replace("og:", "")
                 metadata[key] = content
 
         # Also check for article: namespace
-        for tag in soup.find_all("meta", property=lambda x: x and x.startswith("article:")):
-            prop = tag.get("property", "")
-            content = tag.get("content", "")
+        for tag in soup.find_all("meta", property=lambda x: isinstance(x, str) and x.startswith("article:")):
+            prop = attr_str(tag, "property")
+            content = attr_str(tag, "content")
             if prop and content:
                 key = prop.replace("article:", "")
                 metadata[key] = content

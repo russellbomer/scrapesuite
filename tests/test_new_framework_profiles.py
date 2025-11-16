@@ -51,16 +51,16 @@ def test_django_admin_detection():
     </body>
     </html>
     """
-    
+
     # Test detection
     framework = detect_framework(html)
     assert framework is not None, "Should detect Django Admin"
     assert framework == DjangoAdminProfile, f"Expected DjangoAdminProfile, got {framework}"
-    
+
     # Test selector hints
     results = find_item_selector(html)
     assert len(results) > 0, "Should find item selectors"
-    
+
     # Check that table rows are detected
     tr_found = any("tr" in r["selector"] or "row" in r["selector"] for r in results)
     assert tr_found, "Should find table row selectors"
@@ -100,16 +100,16 @@ def test_nextjs_detection():
     </body>
     </html>
     """
-    
+
     # Test detection
     framework = detect_framework(html)
     assert framework is not None, "Should detect Next.js"
     assert framework == NextJSProfile, f"Expected NextJSProfile, got {framework}"
-    
+
     # Test selector hints
     results = find_item_selector(html)
     assert len(results) > 0, "Should find item selectors"
-    
+
     # Check that articles are detected
     article_found = any("article" in r["selector"] or "card" in r["selector"] for r in results)
     assert article_found, "Should find article/card selectors"
@@ -146,16 +146,16 @@ def test_react_detection():
     </body>
     </html>
     """
-    
+
     # Test detection
     framework = detect_framework(html)
     assert framework is not None, "Should detect React"
     assert framework == ReactComponentProfile, f"Expected ReactComponentProfile, got {framework}"
-    
+
     # Test selector hints
     results = find_item_selector(html)
     assert len(results) > 0, "Should find item selectors"
-    
+
     # Check that PostCard is detected
     card_found = any("Card" in r["selector"] or "PostCard" in r["selector"] for r in results)
     assert card_found, "Should find PostCard selectors"
@@ -204,16 +204,16 @@ def test_vuejs_detection():
     </body>
     </html>
     """
-    
+
     # Test detection
     framework = detect_framework(html)
     assert framework is not None, "Should detect Vue.js"
     assert framework == VueJSProfile, f"Expected VueJSProfile, got {framework}"
-    
+
     # Test selector hints
     results = find_item_selector(html)
     assert len(results) > 0, "Should find item selectors"
-    
+
     # Check that articles are detected
     article_found = any("article" in r["selector"] or "item" in r["selector"] for r in results)
     assert article_found, "Should find article/item selectors"
@@ -222,7 +222,7 @@ def test_vuejs_detection():
 def test_django_field_mappings():
     """Test Django Admin field selector generation."""
     from bs4 import BeautifulSoup
-    
+
     html = """
     <tr class="row1">
         <th class="field-__str__"><a href="/admin/blog/post/1/">Test Post</a></th>
@@ -230,20 +230,20 @@ def test_django_field_mappings():
         <td class="field-created">2025-01-15</td>
     </tr>
     """
-    
+
     soup = BeautifulSoup(html, "html.parser")
     row = soup.find("tr")
-    
+
     # Test title field
     title_selector = DjangoAdminProfile.generate_field_selector(row, "title")
     assert title_selector is not None, "Should find title selector"
     assert "field-__str__" in title_selector or "field-title" in title_selector
-    
+
     # Test author field
     author_selector = DjangoAdminProfile.generate_field_selector(row, "author")
     assert author_selector is not None, "Should find author selector"
     assert "field-author" in author_selector
-    
+
     # Test date field
     date_selector = DjangoAdminProfile.generate_field_selector(row, "date")
     assert date_selector is not None, "Should find date selector"
@@ -253,7 +253,7 @@ def test_django_field_mappings():
 def test_nextjs_field_mappings():
     """Test Next.js field selector generation."""
     from bs4 import BeautifulSoup
-    
+
     html = """
     <article class="post-card">
         <h2 class="post-title"><a href="/posts/first">First Post</a></h2>
@@ -261,14 +261,14 @@ def test_nextjs_field_mappings():
         <p class="post-excerpt">This is the first post</p>
     </article>
     """
-    
+
     soup = BeautifulSoup(html, "html.parser")
     article = soup.find("article")
-    
+
     # Test title field
     title_selector = NextJSProfile.generate_field_selector(article, "title")
     assert title_selector is not None, "Should find title selector"
-    
+
     # Test date field
     date_selector = NextJSProfile.generate_field_selector(article, "date")
     assert date_selector is not None, "Should find date selector"
@@ -278,7 +278,7 @@ def test_nextjs_field_mappings():
 def test_react_field_mappings():
     """Test React component field selector generation."""
     from bs4 import BeautifulSoup
-    
+
     html = """
     <div class="PostCard">
         <h2 class="PostTitle">First Post</h2>
@@ -287,15 +287,15 @@ def test_react_field_mappings():
         <p class="PostDescription">Post description here</p>
     </div>
     """
-    
+
     soup = BeautifulSoup(html, "html.parser")
     card = soup.find("div", class_="PostCard")
-    
+
     # Test title field
     title_selector = ReactComponentProfile.generate_field_selector(card, "title")
     assert title_selector is not None, "Should find title selector"
     assert "Title" in title_selector or "h2" in title_selector
-    
+
     # Test description field
     desc_selector = ReactComponentProfile.generate_field_selector(card, "description")
     assert desc_selector is not None, "Should find description selector"
@@ -307,17 +307,17 @@ def test_framework_priority_order():
     django_html = '<body class="django-admin"><div>Content</div></body>'
     framework = detect_framework(django_html)
     assert framework == DjangoAdminProfile, "Django should be detected"
-    
+
     # Next.js should be detected
     nextjs_html = '<script id="__NEXT_DATA__"></script><div id="__next"></div>'
     framework = detect_framework(nextjs_html)
     assert framework == NextJSProfile, "Next.js should be detected"
-    
+
     # React should be detected
     react_html = '<div id="root" data-reactroot=""></div>'
     framework = detect_framework(react_html)
     assert framework == ReactComponentProfile, "React should be detected"
-    
+
     # Vue should be detected
     vue_html = '<div v-for="item in items"></div>'
     framework = detect_framework(vue_html)

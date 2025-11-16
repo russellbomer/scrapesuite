@@ -7,14 +7,14 @@ from ..base import FrameworkProfile
 
 class VueJSProfile(FrameworkProfile):
     """Vue.js application detection."""
-    
+
     name = "vuejs"
-    
+
     @classmethod
     def detect(cls, html: str, item_element: Tag | None = None) -> int:
         """Detect Vue.js by looking for v- directives and Vue-specific attributes."""
         score = 0
-        
+
         # Vue.js indicators
         if "v-for=" in html:
             score += 45  # Increased from 35
@@ -28,9 +28,9 @@ class VueJSProfile(FrameworkProfile):
             score += 30
         if "vue.js" in html.lower() or "vue@" in html:
             score += 25
-        
+
         return min(score, 100)
-    
+
     @classmethod
     def get_item_selector_hints(cls) -> list[str]:
         """Common Vue.js component patterns."""
@@ -41,7 +41,7 @@ class VueJSProfile(FrameworkProfile):
             "article",
             "[v-for]",
         ]
-    
+
     @classmethod
     def get_field_mappings(cls) -> dict[str, list[str]]:
         """Vue.js component field mappings (typically use kebab-case or camelCase)."""

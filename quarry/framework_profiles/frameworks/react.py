@@ -7,14 +7,14 @@ from ..base import FrameworkProfile
 
 class ReactComponentProfile(FrameworkProfile):
     """Generic React application detection."""
-    
+
     name = "react"
-    
+
     @classmethod
     def detect(cls, html: str, item_element: Tag | None = None) -> int:
         """Detect React by looking for data-react attributes and root div."""
         score = 0
-        
+
         # React-specific indicators
         if "data-reactroot" in html:
             score += 40
@@ -28,9 +28,9 @@ class ReactComponentProfile(FrameworkProfile):
             score += 15
         if "react-dom" in html or "react.js" in html:
             score += 25
-        
+
         return min(score, 100)
-    
+
     @classmethod
     def get_item_selector_hints(cls) -> list[str]:
         """Common React component patterns."""
@@ -42,7 +42,7 @@ class ReactComponentProfile(FrameworkProfile):
             "article",
             "[data-testid*='item']",
         ]
-    
+
     @classmethod
     def get_field_mappings(cls) -> dict[str, list[str]]:
         """React component field mappings (typically use PascalCase/camelCase)."""

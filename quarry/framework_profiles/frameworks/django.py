@@ -7,14 +7,14 @@ from ..base import FrameworkProfile
 
 class DjangoAdminProfile(FrameworkProfile):
     """Django Admin interface detection."""
-    
+
     name = "django_admin"
-    
+
     @classmethod
     def detect(cls, html: str, item_element: Tag | None = None) -> int:
         """Detect Django Admin by looking for admin-specific classes and meta tags."""
         score = 0
-        
+
         # Django Admin indicators
         if "django-admin" in html:
             score += 40
@@ -28,9 +28,9 @@ class DjangoAdminProfile(FrameworkProfile):
             score += 15
         if "field-" in html and "th.field" in html:
             score += 20
-        
+
         return min(score, 100)
-    
+
     @classmethod
     def get_item_selector_hints(cls) -> list[str]:
         """Django Admin list view selectors."""
@@ -40,7 +40,7 @@ class DjangoAdminProfile(FrameworkProfile):
             ".grp-row",
             "tr.row1, tr.row2",
         ]
-    
+
     @classmethod
     def get_field_mappings(cls) -> dict[str, list[str]]:
         """Django Admin field mappings."""

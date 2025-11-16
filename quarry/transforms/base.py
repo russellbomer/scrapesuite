@@ -1,5 +1,8 @@
 """Base transform utilities."""
 
+from datetime import datetime
+from typing import cast
+
 import pandas as pd
 
 Frame = pd.DataFrame
@@ -15,9 +18,10 @@ def safe_to_iso(dt_str: str | None) -> str | None:
         return None
 
     try:
-        dt = pd.to_datetime(dt_str, utc=True, errors="coerce")
-        if pd.isna(dt):
+        dt_any = pd.to_datetime(dt_str, utc=True, errors="coerce")
+        if pd.isna(dt_any):
             return None
+        dt = cast(datetime, dt_any)
         return dt.isoformat()
     except Exception:
         return None

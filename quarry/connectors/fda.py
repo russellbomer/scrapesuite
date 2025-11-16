@@ -3,12 +3,14 @@
 import re
 import warnings
 from pathlib import Path
+from typing import Any, cast
 from urllib.parse import urljoin
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from quarry.connectors.base import Raw
 from quarry.lib.http import get_html
+from quarry.lib.bs4_utils import attr_str
 
 
 class FDAConnector:
@@ -76,7 +78,8 @@ class FDAConnector:
             detail_data = self.detail_parser(detail_html)
             # Merge detail into first record as example
             if records and detail_data:
-                records[0].update(detail_data)
+                first = cast(dict[str, Any], records[0])
+                first.update(detail_data)
 
         next_cursor = records[0].get("id") if records else None
         return records, next_cursor
@@ -106,7 +109,7 @@ class FDAConnector:
         anchors = soup.select("a[href*='/safety/recalls-market-withdrawals-safety-alerts/']")
 
         for anchor in anchors:
-            href = anchor.get("href", "")
+            href = attr_str(anchor, "href")
             if not href:
                 continue
 
@@ -127,10 +130,10 @@ class FDAConnector:
             # Try to extract posted date from nearby elements
             posted_at = ""
             parent = anchor.parent
-            if parent:
+            if isinstance(parent, Tag):
                 time_elem = parent.find("time")
                 if time_elem:
-                    posted_at = time_elem.get_text(strip=True) or time_elem.get("datetime", "")
+                    posted_at = time_elem.get_text(strip=True) or attr_str(time_elem, "datetime")
 
             records.append(
                 {
@@ -143,10 +146,10 @@ class FDAConnector:
 
         return records
 
-    def detail_parser(self, html: str) -> Raw:
+    def detail_parser(self, html: str) -> dict[str, Any]:
         """Parse FDA detail page HTML."""
         soup = BeautifulSoup(html, "html.parser")
-        detail: Raw = {}
+        detail: dict[str, Any] = {}
 
         # Extract detail fields (simplified)
         class_elem = soup.find(class_="recall-class") or soup.find(

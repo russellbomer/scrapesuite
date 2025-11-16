@@ -93,6 +93,11 @@ def build_schema_interactive(
     Returns:
         Complete ExtractionSchema
     """
+    # Ensure item selector is initialized before any branch uses it
+    item_selector: str | None = None
+    # Initialize fields once for the interactive flow
+    fields: dict[str, FieldSchema] = {}
+
     try:
         from rich.console import Console
         from rich.prompt import Prompt, Confirm
@@ -117,7 +122,7 @@ def build_schema_interactive(
         return _build_schema_simple(url, analysis, html)
 
     def _prompt_pagination_config(
-        pagination_candidates: list[dict[str, Any]]
+        pagination_candidates: list[dict[str, Any]],
     ) -> PaginationSchema | None:
         """Interactive helper for configuring pagination."""
 
@@ -194,18 +199,14 @@ def build_schema_interactive(
                     "[yellow]Selector did not match the provided HTML. You may need to adjust it.[/yellow]"
                 )
 
-        wait_input = Prompt.ask(
-            "Seconds to wait between pages", default="1.0"
-        ).strip()
+        wait_input = Prompt.ask("Seconds to wait between pages", default="1.0").strip()
         try:
             wait_seconds = float(wait_input) if wait_input else 1.0
         except ValueError:
             console.print("[yellow]Invalid wait value. Using 1.0 seconds.[/yellow]")
             wait_seconds = 1.0
 
-        max_pages_input = Prompt.ask(
-            "Max pages (0 for unlimited)", default="0"
-        ).strip()
+        max_pages_input = Prompt.ask("Max pages (0 for unlimited)", default="0").strip()
         max_pages_value: int | None
         try:
             if max_pages_input and int(max_pages_input) > 0:
@@ -487,11 +488,11 @@ def build_schema_interactive(
                             console.print("[yellow]Selector cannot be empty.[/yellow]")
                             continue
 
-                        attribute = Prompt.ask("Attribute (optional)", default="")
+                        attr_input = Prompt.ask("Attribute (optional)", default="")
 
                         fields[field_name] = FieldSchema(
                             selector=selector.strip(),
-                            attribute=attribute.strip() if attribute.strip() else None,
+                            attribute=attr_input.strip() if attr_input.strip() else None,
                         )
                         console.print(f"[green]✓[/green] Added: {field_name}")
 
@@ -510,9 +511,9 @@ def build_schema_interactive(
             pagination: PaginationSchema | None = None
             pagination_candidates: list[dict[str, Any]] = []
             if analysis:
-                pagination_candidates = (
-                    (analysis.get("suggestions") or {}).get("pagination_candidates") or []
-                )
+                pagination_candidates = (analysis.get("suggestions") or {}).get(
+                    "pagination_candidates"
+                ) or []
 
             enable_default = bool(pagination_candidates)
             if Confirm.ask("Enable pagination?", default=enable_default):
@@ -587,7 +588,7 @@ def build_schema_interactive(
         )
     )
 
-    item_selector: str | None = None
+    # item_selector declared above to avoid redefinition warnings
     suggested_selector: str | None = None
     if analysis:
         suggested_selector = (analysis.get("suggestions") or {}).get("item_selector")
@@ -673,7 +674,7 @@ def build_schema_interactive(
         )
     )
 
-    fields = {}
+    # Fields dict initialized at function start
 
     # Suggest fields from Probe if available
     suggested_fields = []
@@ -712,13 +713,13 @@ def build_schema_interactive(
                 selector = field["selector"]
 
                 # Auto-detect attributes
-                attribute = None
+                attr: str | None = None
                 if "href" in selector.lower() or field_name.lower() in ["url", "link"]:
-                    attribute = "href"
+                    attr = "href"
                 elif "src" in selector.lower() or field_name.lower() in ["image", "img"]:
-                    attribute = "src"
+                    attr = "src"
 
-                fields[field_name] = FieldSchema(selector=selector, attribute=attribute)
+                fields[field_name] = FieldSchema(selector=selector, attribute=attr)
             added_count = len(fields) - before_count
             console.print(f"[green]✓[/green] Added {added_count} fields")
         else:
@@ -744,12 +745,16 @@ def build_schema_interactive(
                     selection = Prompt.ask("Fields to include", default="none")
                     continue
 
-                valid_indices = [idx for idx in selected_indices if 1 <= idx <= len(suggested_fields)]
+                valid_indices = [
+                    idx for idx in selected_indices if 1 <= idx <= len(suggested_fields)
+                ]
                 if valid_indices:
                     selected_indices = valid_indices
                     break
 
-                console.print("[yellow]No valid field numbers found. Try again or enter 'none'.[/yellow]")
+                console.print(
+                    "[yellow]No valid field numbers found. Try again or enter 'none'.[/yellow]"
+                )
                 selection = Prompt.ask("Fields to include", default="none")
 
             before_count = len(fields)
@@ -759,13 +764,13 @@ def build_schema_interactive(
                 selector = field["selector"]
 
                 # Auto-detect attributes
-                attribute = None
+                attr = None
                 if "href" in selector.lower() or field_name.lower() in ["url", "link"]:
-                    attribute = "href"
+                    attr = "href"
                 elif "src" in selector.lower() or field_name.lower() in ["image", "img"]:
-                    attribute = "src"
+                    attr = "src"
 
-                fields[field_name] = FieldSchema(selector=selector, attribute=attribute)
+                fields[field_name] = FieldSchema(selector=selector, attribute=attr)
 
             added_count = len(fields) - before_count
             console.print(f"[green]✓[/green] Added {added_count} fields")
@@ -783,22 +788,22 @@ def build_schema_interactive(
         selector = Prompt.ask(f"Selector for '{field_name}'")
 
         # Ask for attribute if it looks like a link/image
-        attribute = None
+        attr_choice: str | None = None
         if "href" in selector.lower() or field_name.lower() in ["url", "link"]:
             if Confirm.ask("Extract 'href' attribute?", default=True):
-                attribute = "href"
+                attr_choice = "href"
         elif "src" in selector.lower() or field_name.lower() in ["image", "img"]:
             if Confirm.ask("Extract 'src' attribute?", default=True):
-                attribute = "src"
+                attr_choice = "src"
         else:
             custom_attr = Prompt.ask("Extract attribute (leave empty for text)", default="")
             if custom_attr.strip():
-                attribute = custom_attr.strip()
+                attr_choice = custom_attr.strip()
 
         required = Confirm.ask(f"Is '{field_name}' required?", default=False)
 
         fields[field_name] = FieldSchema(
-            selector=selector, attribute=attribute if attribute else None, required=required
+            selector=selector, attribute=attr_choice if attr_choice else None, required=required
         )
 
         console.print(f"[green]✓[/green] Added field: {field_name}")
@@ -821,9 +826,9 @@ def build_schema_interactive(
 
     pagination_candidates = []
     if analysis:
-        pagination_candidates = (
-            (analysis.get("suggestions") or {}).get("pagination_candidates") or []
-        )
+        pagination_candidates = (analysis.get("suggestions") or {}).get(
+            "pagination_candidates"
+        ) or []
 
     pagination = None
     enable_default = bool(pagination_candidates)
@@ -831,6 +836,10 @@ def build_schema_interactive(
         pagination = _prompt_pagination_config(pagination_candidates)
 
     # Build schema
+    # Ensure item_selector is set
+    if item_selector is None:
+        raise ValueError("Item selector cannot be empty")
+
     schema = ExtractionSchema(
         name=name,
         description=description if description.strip() else None,
@@ -878,21 +887,29 @@ def _build_schema_simple(
         print("Suggested containers:")
         containers = analysis["containers"][:3]
         for idx, cont in enumerate(containers, 1):
-            selector = cont.get("child_selector", cont.get("selector"))
+            selector = cont.get("child_selector") or cont.get("selector") or "—"
             count = cont.get("item_count", 0)
             print(f"  {idx}. {selector} ({count} items)")
 
         choice = input("\nSelect option or enter custom [1]: ").strip() or "1"
         if choice.isdigit() and 1 <= int(choice) <= len(containers):
-            item_selector = containers[int(choice) - 1].get("child_selector")
+            item_selector = (
+                containers[int(choice) - 1].get("child_selector")
+                or containers[int(choice) - 1].get("selector")
+                or ".item"
+            )
         else:
             item_selector = choice
     else:
         item_selector = input("Item selector: ").strip()
 
+    # Ensure we have a usable selector string
+    if not item_selector:
+        item_selector = ".item"
+
     # Fields
     print("\nFields:")
-    fields = {}
+    fields: dict[str, FieldSchema] = {}
 
     while True:
         if fields:
@@ -931,4 +948,7 @@ def load_analysis_from_file(path: str | Path) -> dict[str, Any]:
         raise FileNotFoundError(f"Analysis file not found: {path}")
 
     with path.open() as f:
-        return json.load(f)
+        data = json.load(f)
+        if not isinstance(data, dict):
+            raise ValueError("Analysis file must be a JSON object")
+        return data

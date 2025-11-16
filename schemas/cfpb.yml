@@ -1,0 +1,10 @@
+name: cfpb
+version: 1
+url: https://www.consumerfinance.gov/about-us/newsroom/?categories=press-release
+item_selector: .o-post-preview
+fields:
+  link:
+    selector: a[href]
+    attribute: href
+    required: false
+    multiple: false

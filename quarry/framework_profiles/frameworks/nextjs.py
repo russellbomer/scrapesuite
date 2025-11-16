@@ -7,14 +7,14 @@ from ..base import FrameworkProfile
 
 class NextJSProfile(FrameworkProfile):
     """Next.js application detection."""
-    
+
     name = "nextjs"
-    
+
     @classmethod
     def detect(cls, html: str, item_element: Tag | None = None) -> int:
         """Detect Next.js by looking for __NEXT_DATA__ and Next.js-specific attributes."""
         score = 0
-        
+
         # Next.js indicators
         if "__NEXT_DATA__" in html:
             score += 50
@@ -26,9 +26,9 @@ class NextJSProfile(FrameworkProfile):
             score += 20
         if "next/script" in html or "next/image" in html:
             score += 15
-        
+
         return min(score, 100)
-    
+
     @classmethod
     def get_item_selector_hints(cls) -> list[str]:
         """Common Next.js component patterns."""
@@ -39,7 +39,7 @@ class NextJSProfile(FrameworkProfile):
             "article",
             "[data-item]",
         ]
-    
+
     @classmethod
     def get_field_mappings(cls) -> dict[str, list[str]]:
         """Next.js typically uses modular CSS or Tailwind - look for semantic patterns."""

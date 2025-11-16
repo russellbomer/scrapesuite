@@ -10,7 +10,7 @@ from quarry.tools.scout.reporter import format_as_json, format_as_terminal
 
 class TestScoutAnalyzer:
     """Test the Scout analyzer."""
-    
+
     def test_analyze_page_basic(self):
         """Test basic page analysis."""
         html = """
@@ -25,9 +25,9 @@ class TestScoutAnalyzer:
         </body>
         </html>
         """
-        
+
         result = analyze_page(html, url="https://example.com")
-        
+
         # Check structure
         assert "url" in result
         assert "frameworks" in result
@@ -35,43 +35,43 @@ class TestScoutAnalyzer:
         assert "metadata" in result
         assert "statistics" in result
         assert "suggestions" in result
-        
+
         # Check URL
         assert result["url"] == "https://example.com"
-        
+
         # Check containers found
         assert len(result["containers"]) > 0
         container = result["containers"][0]
         assert container["item_count"] == 3
         assert "li" in container["child_selector"]
-        
+
         # Check statistics
         stats = result["statistics"]
         assert stats["total_elements"] > 0
         assert stats["total_lists"] == 1
-    
+
     def test_analyze_fda_fixture(self):
         """Test analysis of FDA fixture."""
         fixture_path = Path("tests/fixtures/fda_list.html")
         if not fixture_path.exists():
             pytest.skip("Fixture not found")
-        
+
         html = fixture_path.read_text()
         result = analyze_page(html)
-        
+
         # Should detect containers
         assert len(result["containers"]) > 0
-        
+
         # Should have metadata
         assert result["metadata"]["title"] == "FDA Recalls"
-        
+
         # Should have suggestions
         assert result["suggestions"]["best_container"] is not None
-    
+
     def test_analyze_empty_html(self):
         """Test analysis of empty HTML."""
         result = analyze_page("", url="https://example.com")
-        
+
         # Should return empty but valid structure
         assert result["url"] == "https://example.com"
         assert result["frameworks"] == []
@@ -81,7 +81,7 @@ class TestScoutAnalyzer:
 
 class TestScoutReporter:
     """Test the Scout reporter."""
-    
+
     def test_format_as_json(self):
         """Test JSON formatting."""
         analysis = {
@@ -92,15 +92,16 @@ class TestScoutReporter:
             "statistics": {},
             "suggestions": {},
         }
-        
+
         result = format_as_json(analysis, pretty=True)
-        
+
         # Should be valid JSON
         import json
+
         parsed = json.loads(result)
         assert parsed["url"] == "https://example.com"
         assert parsed["metadata"]["title"] == "Test"
-    
+
     def test_format_as_json_compact(self):
         """Test compact JSON formatting."""
         analysis = {
@@ -111,12 +112,12 @@ class TestScoutReporter:
             "statistics": {},
             "suggestions": {},
         }
-        
+
         result = format_as_json(analysis, pretty=False)
-        
+
         # Should be on one line
         assert "\n" not in result
-    
+
     def test_format_as_terminal(self):
         """Test terminal formatting."""
         analysis = {
@@ -145,9 +146,9 @@ class TestScoutReporter:
                 }
             },
         }
-        
+
         result = format_as_terminal(analysis)
-        
+
         # Should contain key information
         assert "SCOUT ANALYSIS" in result
         assert "Test Page" in result

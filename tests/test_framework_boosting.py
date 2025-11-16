@@ -41,18 +41,22 @@ def test_drupal_views_boosting():
     </body>
     </html>
     """
-    
+
     results = find_item_selector(html)
-    
+
     # Should find candidates
     assert len(results) > 0, "Should find selector candidates"
-    
+
     # First result should be .views-row (framework-specific pattern)
-    assert results[0]["selector"] == ".views-row", f"Expected .views-row at top, got {results[0]['selector']}"
+    assert results[0]["selector"] == ".views-row", (
+        f"Expected .views-row at top, got {results[0]['selector']}"
+    )
     assert results[0]["count"] == 3, "Should find 3 views-row elements"
-    
+
     # Should have very_high confidence due to framework match
-    assert results[0]["confidence"] == "very_high", "Framework hints should have very_high confidence"
+    assert results[0]["confidence"] == "very_high", (
+        "Framework hints should have very_high confidence"
+    )
 
 
 def test_wordpress_boosting():
@@ -79,15 +83,17 @@ def test_wordpress_boosting():
     </body>
     </html>
     """
-    
+
     results = find_item_selector(html)
-    
+
     # Should find candidates
     assert len(results) > 0, "Should find selector candidates"
-    
+
     # First result should be .hentry or .post (framework-specific patterns)
     top_selector = results[0]["selector"]
-    assert top_selector in [".hentry", ".post"], f"Expected WordPress pattern at top, got {top_selector}"
+    assert top_selector in [".hentry", ".post"], (
+        f"Expected WordPress pattern at top, got {top_selector}"
+    )
     assert results[0]["count"] == 3, "Should find 3 post elements"
 
 
@@ -123,19 +129,19 @@ def test_bootstrap_card_boosting():
     </body>
     </html>
     """
-    
+
     results = find_item_selector(html)
-    
+
     # Should find candidates
     assert len(results) > 0, "Should find selector candidates"
-    
+
     # .card should be in top results due to framework match
     card_result = None
     for result in results[:3]:  # Check top 3
         if result["selector"] == ".card":
             card_result = result
             break
-    
+
     assert card_result is not None, "Bootstrap .card pattern should be in top 3 results"
     assert card_result["count"] == 3, "Should find 3 card elements"
 
@@ -175,19 +181,19 @@ def test_table_rows_high_priority():
     </body>
     </html>
     """
-    
+
     results = find_item_selector(html)
-    
+
     # Should find candidates
     assert len(results) > 0, "Should find selector candidates"
-    
+
     # Table rows should be detected
     tr_result = None
     for result in results[:3]:  # Check top 3
         if "tr" in result["selector"]:
             tr_result = result
             break
-    
+
     assert tr_result is not None, "Table rows should be in top 3 results"
     assert tr_result["count"] == 3, "Should find 3 data rows (excluding header)"
     assert tr_result["confidence"] == "high", "Table rows should have high confidence"
@@ -214,18 +220,18 @@ def test_no_framework_fallback():
     </body>
     </html>
     """
-    
+
     results = find_item_selector(html)
-    
+
     # Should find candidates
     assert len(results) > 0, "Should find selector candidates"
-    
+
     # .item should be found
     item_result = None
     for result in results:
         if result["selector"] == ".item":
             item_result = result
             break
-    
+
     assert item_result is not None, "Should find .item selector"
     assert item_result["count"] == 3, "Should find 3 items"

@@ -7,14 +7,14 @@ from ..base import FrameworkProfile, _get_element_classes
 
 class BootstrapProfile(FrameworkProfile):
     """Bootstrap framework - very common for cards/listings."""
-    
+
     name = "bootstrap"
-    
+
     @classmethod
     def detect(cls, html: str, item_element: Tag | None = None) -> int:
         """Detect Bootstrap by looking for characteristic classes."""
         score = 0
-        
+
         # Bootstrap component indicators
         if "card" in html:
             score += 25
@@ -28,15 +28,15 @@ class BootstrapProfile(FrameworkProfile):
             score += 10
         if "container" in html:
             score += 10
-        
+
         # Check item element
         if item_element:
             classes = _get_element_classes(item_element)
             if any(indicator in classes for indicator in ["card", "list-group-item", "media"]):
                 score += 20
-        
+
         return min(score, 100)
-    
+
     @classmethod
     def get_item_selector_hints(cls) -> list[str]:
         """Bootstrap component selectors."""
@@ -46,7 +46,7 @@ class BootstrapProfile(FrameworkProfile):
             ".media",
             ".row .col",
         ]
-    
+
     @classmethod
     def get_field_mappings(cls) -> dict[str, list[str]]:
         """Common Bootstrap patterns."""

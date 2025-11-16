@@ -11,12 +11,12 @@ from quarry.framework_profiles.base import FrameworkProfile
 class SchemaOrgProfile(FrameworkProfile):
     """
     Detect and extract Schema.org structured data.
-    
+
     Schema.org provides a universal vocabulary for structured data.
     This profile supports both:
     1. Microdata attributes (itemscope, itemprop) - legacy format
     2. JSON-LD scripts - modern format preferred by Google
-    
+
     JSON-LD is now the preferred format and scores higher.
     """
 
@@ -26,17 +26,20 @@ class SchemaOrgProfile(FrameworkProfile):
     def _extract_json_ld(cls, html: str) -> list[dict[str, Any]]:
         """
         Extract and parse JSON-LD script blocks.
-        
+
         Returns:
             List of parsed JSON-LD objects (may be empty)
         """
         soup = BeautifulSoup(html, "html.parser")
         json_ld_scripts = soup.find_all("script", type="application/ld+json")
-        
+
         parsed_objects = []
         for script in json_ld_scripts:
             try:
-                data = json.loads(script.string)
+                text = script.string
+                if not isinstance(text, str):
+                    continue
+                data = json.loads(text)
                 # Handle both single objects and arrays
                 if isinstance(data, list):
                     parsed_objects.extend(data)
@@ -45,7 +48,7 @@ class SchemaOrgProfile(FrameworkProfile):
             except (json.JSONDecodeError, AttributeError, TypeError):
                 # Skip malformed JSON-LD
                 continue
-        
+
         return parsed_objects
 
     @classmethod
@@ -85,7 +88,7 @@ class SchemaOrgProfile(FrameworkProfile):
             ("Person", 10),
             ("Organization", 10),
         ]
-        
+
         for schema_type, type_score in schema_types:
             if f"schema.org/{schema_type}" in html or f'"@type":"{schema_type}"' in html:
                 score += type_score
@@ -120,7 +123,7 @@ class SchemaOrgProfile(FrameworkProfile):
 
         Returns:
             Dict mapping field types to list of selector patterns.
-            
+
         Note: This returns microdata selectors. For JSON-LD extraction,
         use extract_json_ld_fields() method instead (see below).
         """
@@ -221,17 +224,17 @@ class SchemaOrgProfile(FrameworkProfile):
     def extract_json_ld_fields(cls, html: str) -> dict[str, Any]:
         """
         Extract common fields from JSON-LD structured data.
-        
+
         Modern Schema.org implementations use JSON-LD instead of microdata.
         This method extracts fields from JSON-LD scripts.
-        
+
         Args:
             html: HTML content containing JSON-LD scripts
-            
+
         Returns:
             Dict with extracted fields. Keys are standardized field names,
             values are extracted from JSON-LD @type objects.
-            
+
         Example:
             >>> html = '<script type="application/ld+json">{"@type":"Article","headline":"Test"}</script>'
             >>> fields = SchemaOrgProfile.extract_json_ld_fields(html)
@@ -241,7 +244,7 @@ class SchemaOrgProfile(FrameworkProfile):
         json_ld_blocks = cls._extract_json_ld(html)
         if not json_ld_blocks:
             return {}
-        
+
         # Field mapping: our standard names -> JSON-LD property names
         field_mappings = {
             "title": ["headline", "name", "title"],
@@ -255,16 +258,16 @@ class SchemaOrgProfile(FrameworkProfile):
             "rating": ["ratingValue"],
             "publisher": ["publisher"],
         }
-        
+
         extracted = {}
-        
+
         # Try to extract each field from JSON-LD blocks
         for our_field, json_properties in field_mappings.items():
             for block in json_ld_blocks:
                 for json_prop in json_properties:
                     if json_prop in block:
                         value = block[json_prop]
-                        
+
                         # Handle nested objects (e.g., author: {name: "John"})
                         if isinstance(value, dict):
                             if "name" in value:
@@ -273,14 +276,16 @@ class SchemaOrgProfile(FrameworkProfile):
                                 extracted[our_field] = value["@id"]
                         # Handle arrays (take first element)
                         elif isinstance(value, list) and value:
-                            extracted[our_field] = value[0] if isinstance(value[0], str) else str(value[0])
+                            extracted[our_field] = (
+                                value[0] if isinstance(value[0], str) else str(value[0])
+                            )
                         # Direct string/number value
                         else:
                             extracted[our_field] = str(value)
-                        
+
                         break  # Found this field, move to next
-                
+
                 if our_field in extracted:
                     break  # Found in a block, don't check others
-        
+
         return extracted

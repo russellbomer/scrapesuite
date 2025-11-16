@@ -25,7 +25,10 @@ def _load_session() -> dict[str, Any]:
 
     try:
         with _SESSION_FILE.open("r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+            if isinstance(data, dict):
+                return data
+            return {}
     except (json.JSONDecodeError, IOError):
         return {}
 
@@ -50,7 +53,7 @@ def set_last_schema(
         url: Optional URL associated with the schema
     """
     session = _load_session()
-    record = {
+    record: dict[str, Any] = {
         "path": str(Path(schema_path).absolute()),
         "url": url,
         "timestamp": datetime.now(UTC).isoformat(),
@@ -116,5 +119,3 @@ def get_last_output() -> dict[str, Any] | None:
     """
     session = _load_session()
     return session.get("last_output")
-
-

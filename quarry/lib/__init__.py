@@ -3,7 +3,7 @@ Quarry Core Library
 
 Provides foundational utilities used by all scraping tools:
 - HTTP client with rate limiting, retry logic, robots.txt compliance
-- Token bucket rate limiter for per-domain request throttling  
+- Token bucket rate limiter for per-domain request throttling
 - CSS selector utilities for robust element targeting
 - Robots.txt parsing and policy enforcement
 - Interactive prompts with validation and retry logic

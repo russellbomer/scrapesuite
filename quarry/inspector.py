@@ -13,6 +13,16 @@ from quarry.framework_profiles import (
     is_framework_pattern,
 )
 from quarry.tools.scout.analyzer import analyze_page, _suggest_fields
+from quarry.lib.bs4_utils import attr_str
+
+
+def _class_tokens(tag: Tag) -> list[str]:
+    raw = tag.get("class")
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        return [raw]
+    return [c for c in raw if isinstance(c, str)]
 
 
 def inspect_html(html: str) -> dict[str, Any]:
@@ -35,7 +45,7 @@ def inspect_html(html: str) -> dict[str, Any]:
     class_counter: Counter[str] = Counter()
     samples: dict[str, Tag] = {}
     for tag in soup.find_all(True):
-        for cls in tag.get("class", []):
+        for cls in _class_tokens(tag):
             class_counter[cls] += 1
             samples.setdefault(cls, tag)
 
@@ -57,9 +67,9 @@ def inspect_html(html: str) -> dict[str, Any]:
     for link in soup.find_all("a", href=True)[:10]:
         sample_links.append(
             {
-                "href": link.get("href"),
+                "href": link.get("href") or "",
                 "text": link.get_text(strip=True),
-                "class": " ".join(link.get("class", [])),
+                "class": " ".join(_class_tokens(link)),
             }
         )
 
@@ -118,7 +128,7 @@ def find_item_selector(html: str, min_items: int = 3) -> list[dict[str, Any]]:
         if element:
             link = element.find("a", href=True)
             if link:
-                sample_url = link.get("href", "")
+                sample_url = attr_str(link, "href")
                 if not sample_text:
                     sample_text = link.get_text(strip=True)
             if not sample_text:
@@ -151,20 +161,20 @@ def generate_field_selector(item_element: Tag, field_type: str) -> str | None:
     framework = detect_framework(str(item_element.parent or item_element), item_element)
     if framework:
         selector = get_framework_field_selector(framework, item_element, field_type)
-        if selector:
+        if isinstance(selector, str) and selector:
             return selector
 
     normalized_field = field_type.lower()
     candidates = _suggest_fields(item_element)
 
     def _format(candidate: dict[str, Any]) -> str | None:
-        selector = candidate.get("selector")
-        if not selector:
+        selector_val = candidate.get("selector")
+        if not isinstance(selector_val, str) or not selector_val:
             return None
-        attribute = candidate.get("attribute")
-        if attribute and "::attr" not in selector:
-            selector = f"{selector}::attr({attribute})"
-        return selector
+        attribute_val = candidate.get("attribute")
+        if isinstance(attribute_val, str) and "::attr" not in selector_val:
+            return f"{selector_val}::attr({attribute_val})"
+        return selector_val
 
     for candidate in candidates:
         name = (candidate.get("name") or "").lower()
@@ -187,6 +197,29 @@ def generate_field_selector(item_element: Tag, field_type: str) -> str | None:
                 formatted = _format(candidate)
                 if formatted:
                     return formatted
+
+    # Lightweight fallbacks when patterns didn't produce a direct match
+    try:
+        if normalized_field == "title":
+            heading_el: Tag | None = item_element.select_one("a, h1, h2, h3, h4")
+            if heading_el is not None:
+                return "a" if heading_el.name == "a" else (heading_el.name or None)
+            # Fallback to any container with a class containing 'title'
+            if item_element.select_one('[class*="title"]'):
+                return '[class*="title"]'
+        if normalized_field == "date":
+            if item_element.select_one("[data-date]"):
+                return "[data-date]"
+            if item_element.select_one("time[datetime], time"):
+                return "time[datetime]" if item_element.select_one("time[datetime]") else "time"
+        if normalized_field == "author":
+            if item_element.select_one("[data-author]"):
+                return "[data-author]"
+        if normalized_field == "score":
+            if item_element.select_one("[data-score]"):
+                return "[data-score]"
+    except Exception:
+        pass
 
     return None
 
