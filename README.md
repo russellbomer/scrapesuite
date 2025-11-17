@@ -181,6 +181,35 @@ quarry/
 
 ---
 
+## ⚙️ Configuration
+
+The CLI and HTTP client can be tuned via environment variables:
+
+- `QUARRY_LOG_LEVEL`: Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`). Default `INFO`.
+- `QUARRY_LOG_JSON`: Set to `1` to emit JSON logs to stderr.
+- `QUARRY_DEFAULT_RPS`: Default requests-per-second per domain (float). Default `1.0`.
+- `QUARRY_HTTP_TIMEOUT`: Default request timeout in seconds (int). Default `30`.
+- `QUARRY_HTTP_MAX_RETRIES`: Default HTTP retries (int). Default `3`.
+- `PROXY_URL`: HTTP/HTTPS proxy URL (also honors standard `HTTP(S)_PROXY`).
+- `QUARRY_MAX_CONTENT_MB`: Max response size in MB (int). Rejects larger payloads.
+- `QUARRY_INTERACTIVE`: `1` to prompt when robots.txt blocks (ethical default is non-interactive).
+- `QUARRY_IGNORE_ROBOTS`: `1` to ignore robots.txt (testing only).
+
+Examples:
+
+```bash
+export QUARRY_LOG_LEVEL=INFO
+export QUARRY_DEFAULT_RPS=0.5
+export QUARRY_HTTP_TIMEOUT=60
+export QUARRY_HTTP_MAX_RETRIES=5
+export QUARRY_MAX_CONTENT_MB=10
+export PROXY_URL=http://proxy.internal:8080
+
+quarry excavate schemas/example.yml --url https://example.com -o out.jsonl
+```
+
+---
+
 ## 🧪 Development
 
 ```bash
