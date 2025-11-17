@@ -14,6 +14,7 @@ import os
 import sys
 
 import click
+from quarry.lib.logging import setup_logging
 from rich.console import Console
 
 from quarry.core import load_yaml, run_job
@@ -60,6 +61,8 @@ def quarry(ctx):
       quarry polish data.jsonl --dedupe
       quarry ship data.jsonl postgres://localhost/db
     """
+    # Initialize logging per env (non-disruptive to rich/click output)
+    setup_logging()
     if ctx.invoked_subcommand is None:
         console = Console()
         console.print(BANNER)
