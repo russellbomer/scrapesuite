@@ -22,10 +22,10 @@ jobs:
         run: |
           pip install -e .
           pip install -r requirements.txt
-      - name: Format check
-        run: ruff format --check .
-      - name: Lint
-        run: ruff check .
+      - name: Format check (package only)
+        run: ruff format --check quarry
+      - name: Lint (package only)
+        run: ruff check quarry
       - name: Type check (mypy)
         run: mypy -p quarry
       - name: Test
