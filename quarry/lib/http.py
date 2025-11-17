@@ -1,9 +1,18 @@
-"""Polite HTTP client with retry, backoff, and per-domain rate limiting."""
+"""Polite HTTP client with retry, backoff, and per-domain rate limiting.
+
+Environment knobs (optional):
+- QUARRY_DEFAULT_RPS: float, default RPS for DomainRateLimiter (default 1.0)
+- QUARRY_HTTP_TIMEOUT: int seconds, overrides default timeout when unchanged (30)
+- QUARRY_HTTP_MAX_RETRIES: int, overrides default retries when unchanged (3)
+- QUARRY_MAX_CONTENT_MB: int, maximum response size in MB (skip if header missing; otherwise measured content)
+- PROXY_URL: http(s) proxy URL; also respects standard HTTP(S)_PROXY envs
+"""
 
 import os
 import random
 import sys
 import time
+import logging
 from urllib.parse import urlparse
 from urllib.robotparser import RobotFileParser
 
@@ -13,6 +22,8 @@ from quarry.lib.ratelimit import DomainRateLimiter
 
 # Global rate limiter instance (container to avoid global statement warning)
 _RATE_LIMITER_CONTAINER: dict[str, DomainRateLimiter | None] = {"instance": None}
+
+_LOG = logging.getLogger(__name__)
 
 # Cache for robots.txt parsers (domain -> RobotFileParser | None)
 # None indicates robots.txt fetch failed, assume allowed
@@ -43,7 +54,12 @@ def get_rate_limiter() -> DomainRateLimiter:
     """Get or create global rate limiter with default settings."""
     limiter = _RATE_LIMITER_CONTAINER["instance"]
     if limiter is None:
-        limiter = DomainRateLimiter(default_rps=1.0)
+        # Allow env override for default RPS
+        try:
+            default_rps = float(os.environ.get("QUARRY_DEFAULT_RPS", "1.0"))
+        except ValueError:
+            default_rps = 1.0
+        limiter = DomainRateLimiter(default_rps=default_rps)
         _RATE_LIMITER_CONTAINER["instance"] = limiter
     return limiter
 
@@ -228,14 +244,33 @@ def get_html(
                     f"Note: Respecting robots.txt is the ethical default and required for production use."
                 )
 
+    # Allow env overrides when using defaults
+    try:
+        env_timeout = int(os.environ.get("QUARRY_HTTP_TIMEOUT", ""))
+        if timeout == 30 and env_timeout > 0:
+            timeout = env_timeout
+    except ValueError:
+        pass
+    try:
+        env_retries = int(os.environ.get("QUARRY_HTTP_MAX_RETRIES", ""))
+        if max_retries == 3 and env_retries > 0:
+            max_retries = env_retries
+    except ValueError:
+        pass
+
     # Build realistic browser headers
     headers = _build_browser_headers(url, user_agent=ua)
 
     # Use provided session or create new one
     http_client = session or requests.Session()
+    # Optional proxy override via PROXY_URL (requests also honors *_PROXY)
+    proxy_url = os.environ.get("PROXY_URL")
+    if proxy_url:
+        http_client.proxies.update({"http": proxy_url, "https": proxy_url})
 
     limiter = get_rate_limiter()
 
+    _LOG.info("fetch.start url=%s timeout=%s retries=%s", url, timeout, max_retries)
     for attempt in range(max_retries):
         # Per-domain rate limiting with token bucket
         # Add natural variance to timing (humans don't click at exact intervals)
@@ -248,6 +283,32 @@ def get_html(
         try:
             response = http_client.get(url, headers=headers, timeout=timeout)
             response.raise_for_status()
+
+            # Optional content size guard
+            max_mb_s = os.environ.get("QUARRY_MAX_CONTENT_MB")
+            if max_mb_s:
+                try:
+                    max_bytes = int(max_mb_s) * 1024 * 1024
+                    # Prefer Content-Length if present
+                    clen = response.headers.get("Content-Length")
+                    if clen and clen.isdigit():
+                        size = int(clen)
+                    else:
+                        size = len(response.content)
+                    if size > max_bytes:
+                        raise ValueError(
+                            f"Response too large: {size} bytes > {max_bytes} bytes"
+                        )
+                except ValueError:
+                    # If env unparsable, ignore guard
+                    pass
+
+            _LOG.info(
+                "fetch.ok url=%s status=%s bytes=%s",
+                url,
+                response.status_code,
+                response.headers.get("Content-Length") or len(response.content),
+            )
             return response.text
         except requests.HTTPError as e:
             # Add helpful context to HTTP errors
@@ -273,6 +334,7 @@ def get_html(
                         ) from e
 
             if attempt == max_retries - 1:
+                _LOG.error("fetch.http_error url=%s status=%s", url, getattr(e.response, "status_code", None))
                 raise
 
             # Enhanced exponential backoff with jitter (more human-like)
@@ -290,6 +352,7 @@ def get_html(
                     if retry_after and retry_after.isdigit():
                         wait_time = max(wait_time, int(retry_after))
 
+            _LOG.debug("fetch.backoff url=%s attempt=%s wait=%.2fs", url, attempt + 1, wait_time)
             time.sleep(wait_time)
 
         except requests.RequestException as e:
@@ -300,6 +363,7 @@ def get_html(
 
                 # If this is the last attempt, provide detailed timeout guidance
                 if attempt == max_retries - 1:
+                    _LOG.error("fetch.timeout url=%s attempt=%s", url, attempt + 1)
                     raise requests.Timeout(
                         f"{timeout_type} after {timeout}s for {url}\n\n"
                         f"This site ({domain}) is slow or rate-limiting. Try:\n"
@@ -313,18 +377,24 @@ def get_html(
                 # For retries, wait longer for timeout errors
                 base_backoff = 0.5 * (2**attempt) * 2  # Double wait for timeouts
                 jitter = random.uniform(0, 0.1 * base_backoff)
-                time.sleep(base_backoff + jitter)
+                wait = base_backoff + jitter
+                _LOG.debug("fetch.backoff-timeout url=%s attempt=%s wait=%.2fs", url, attempt + 1, wait)
+                time.sleep(wait)
 
             elif attempt == max_retries - 1:
                 # Last attempt for other errors - re-raise with context
+                _LOG.error("fetch.error url=%s attempt=%s err=%s", url, attempt + 1, type(e).__name__)
                 raise
 
             else:
                 # Generic backoff for other connection errors
                 base_backoff = 0.5 * (2**attempt)
                 jitter = random.uniform(0, 0.1 * base_backoff)
-                time.sleep(base_backoff + jitter)
+                wait = base_backoff + jitter
+                _LOG.debug("fetch.backoff-generic url=%s attempt=%s wait=%.2fs", url, attempt + 1, wait)
+                time.sleep(wait)
 
+    _LOG.error("fetch.unexpected_end url=%s", url)
     raise RuntimeError("Unexpected end of retry loop")
 
 
